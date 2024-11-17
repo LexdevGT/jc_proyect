@@ -33,6 +33,12 @@ $(function(){
     });
     //--FINISH button Save role from m_companies.html
 
+    //--START button Save company from m_carriers.html
+    $('#btn-save-carriers-maintenance').click(function() {
+      carriers_page_save_button();
+    });
+    //--FINISH button Save role from m_carriers.html
+
     //--START button Next from new_order1.html
     // Guardar datos y pasar a la siguiente página
   $('#btn_new_order1_next').click(function(){
@@ -87,6 +93,153 @@ function new_function(){
       }    
     });
   }
+}
+
+// Función para guardar/actualizar carrier
+function carriers_page_save_button() {
+    const carrierData = {
+        name: $('#carrier-name-txt').val(),
+        mc_number: $('#carrier-mcnumber-txt').val(),
+        phone: $('#carrier-phone-txt').val(),
+        email: $('#carrier-email-txt').val(),
+        address: $('#carrier-address-txt').val(),
+        carrier_main_contact: $('#carrier-main-contact-txt').val(),
+        contact_phone: $('#carrier-contact-phone-txt').val(),
+        dispatcher: $('#carrier-dispatcher-txt').val(),
+        dispatcher_phone: $('#carrier-dispatcher-phone-txt').val(),
+        dispatcher_email: $('#carrier-dispatcher-email-txt').val(),
+        billing_contact: $('#carrier-billing-contact-txt').val(),
+        billing_email: $('#carrier-billing-email-txt').val()
+    };
+
+    const carrierId = $('#btn-save-carriers-maintenance').data('carrier-id');
+
+    if (!carrierData.name || !carrierData.mc_number) {
+        alert('Name and MC Number are required!');
+        return;
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_carrier',
+            carrierData: carrierData,
+            carrierId: carrierId || ''
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                window.location.replace('m_carriers.html');
+            } else {
+                alert(response.error);
+            }
+        },
+        error: function() {
+            alert('Error saving carrier. Please contact your administrator.');
+        }
+    });
+}
+
+// Función para obtener información de un carrier
+function getCarrierInfo(carrierId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_carrier_info',
+            id: carrierId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const carrier = response.data;
+                $('#carrier-name-txt').val(carrier.name);
+                $('#carrier-mcnumber-txt').val(carrier.mc_number);
+                $('#carrier-phone-txt').val(carrier.phone);
+                $('#carrier-email-txt').val(carrier.email);
+                $('#carrier-address-txt').val(carrier.address);
+                $('#carrier-main-contact-txt').val(carrier.carrier_main_contact);
+                $('#carrier-contact-phone-txt').val(carrier.contact_phone);
+                $('#carrier-dispatcher-txt').val(carrier.dispatcher);
+                $('#carrier-dispatcher-phone-txt').val(carrier.dispatcher_phone);
+                $('#carrier-dispatcher-email-txt').val(carrier.dispatcher_email);
+                $('#carrier-billing-contact-txt').val(carrier.billing_contact);
+                $('#carrier-billing-email-txt').val(carrier.billing_email);
+
+                $('#btn-save-carriers-maintenance').data('carrier-id', carrierId);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Función para cargar los carriers
+function load_carriers() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { option: 'load_carriers' },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '';
+                response.data.forEach(carrier => {
+                    const checked = carrier.status == 1 ? 'checked' : '';
+                    html += `
+                        <tr>
+                            <td>${carrier.id}</td>
+                            <td><a href="#" class="edit" data-id="${carrier.id}">${carrier.name}</a></td>
+                            <td>${carrier.date_created}</td>
+                            <td>${carrier.mc_number}</td>
+                            <td>${carrier.phone}</td>
+                            <td>${carrier.carrier_main_contact}</td>
+                            <td>
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input status" 
+                                               id="customSwitch${carrier.id}" data-id="${carrier.id}" ${checked}>
+                                        <label class="custom-control-label" for="customSwitch${carrier.id}"></label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+
+                // Destruir DataTable existente si ya está inicializada
+                if ($.fn.DataTable.isDataTable('.table')) {
+                  $('.table').DataTable().destroy();
+                }
+
+                // Actualizar la tabla
+                $('.table tbody').html(html);
+
+                // Re-inicializar DataTable
+                $('.table').DataTable({
+                  "searching": true,  // Habilitar búsqueda
+                  "paging": true,     // Habilitar paginación
+                  "info": true        // Mostrar información
+                });
+
+                // Agregar event listeners
+                $('.status').on('change', function() {
+                    const id = $(this).data('id');
+                    const newStatus = $(this).is(':checked') ? 1 : 0;
+                    updateStatus(id, newStatus, 'carriers');
+                });
+
+                $('.edit').on('click', function(e) {
+                    e.preventDefault();
+                    const id = $(this).data('id');
+                    getCarrierInfo(id);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
 }
 
 function companies_page_save_button(){

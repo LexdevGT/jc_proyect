@@ -36,6 +36,9 @@
 			case 'load_global_search':
 				loadGlobalSearchFunction();
 				break;
+			case 'load_carriers':
+			    loadCarriersFunction();
+			    break;
 			case 'update_role_status':
 				updateRoleStatusFunction();
 				break;
@@ -51,6 +54,9 @@
 			case 'save_companies_software':
 				saveCompaniesSoftwareFunction();
 				break;
+			case 'save_carrier':
+			    saveCarrierFunction();
+			    break;
 			case 'update_user':
 				updateUserFunction();
 				break;	
@@ -72,6 +78,9 @@
 			case 'get_companies_info':
 				getCompaniesInfoFunction();
 				break;
+			case 'get_carrier_info':
+			    getCarrierInfoFunction();
+			    break;
 		}
 	}
 
@@ -95,6 +104,114 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function saveCarrierFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+	    
+	    $carrierData = $_POST['carrierData'];
+	    $carrierId = isset($_POST['carrierId']) ? $_POST['carrierId'] : '';
+	    
+	    try {
+	        if ($carrierId) {
+	            // Update
+	            $query = "UPDATE carriers SET 
+	                name = ?, mc_number = ?, phone = ?, email = ?, 
+	                address = ?, carrier_main_contact = ?, contact_phone = ?,
+	                dispatcher = ?, dispatcher_phone = ?, dispatcher_email = ?,
+	                billing_contact = ?, billing_email = ?
+	                WHERE id = ?";
+	            
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param(
+	                "ssssssssssssi",
+	                $carrierData['name'], $carrierData['mc_number'],
+	                $carrierData['phone'], $carrierData['email'],
+	                $carrierData['address'], $carrierData['carrier_main_contact'],
+	                $carrierData['contact_phone'], $carrierData['dispatcher'],
+	                $carrierData['dispatcher_phone'], $carrierData['dispatcher_email'],
+	                $carrierData['billing_contact'], $carrierData['billing_email'],
+	                $carrierId
+	            );
+	            
+	            if ($stmt->execute()) {
+	                $jsondata['message'] = 'Carrier updated successfully!';
+	            } else {
+	                throw new Exception("Error updating carrier");
+	            }
+	        } else {
+	            // Insert
+	            $query = "INSERT INTO carriers (
+	                name, mc_number, phone, email, address, 
+	                carrier_main_contact, contact_phone, dispatcher,
+	                dispatcher_phone, dispatcher_email, billing_contact,
+	                billing_email, date_created, status
+	            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 1)";
+	            
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param(
+	                "ssssssssssss",
+	                $carrierData['name'], $carrierData['mc_number'],
+	                $carrierData['phone'], $carrierData['email'],
+	                $carrierData['address'], $carrierData['carrier_main_contact'],
+	                $carrierData['contact_phone'], $carrierData['dispatcher'],
+	                $carrierData['dispatcher_phone'], $carrierData['dispatcher_email'],
+	                $carrierData['billing_contact'], $carrierData['billing_email']
+	            );
+	            
+	            if ($stmt->execute()) {
+	                $jsondata['message'] = 'Carrier saved successfully!';
+	            } else {
+	                throw new Exception("Error saving carrier");
+	            }
+	        }
+	    } catch (Exception $e) {
+	        $jsondata['error'] = 'Error: ' . $e->getMessage();
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function getCarrierInfoFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+	    
+	    $id = $_POST['id'];
+	    
+	    $query = "SELECT * FROM carriers WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $id);
+	    
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching carrier data';
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function loadCarriersFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+	    
+	    $query = "SELECT id, name, mc_number, phone, 
+	              carrier_main_contact, date_created, status
+	              FROM carriers ORDER BY name";
+	    
+	    $result = $conn->query($query);
+	    
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading carriers';
+	    }
+	    
+	    echo json_encode($jsondata);
 	}
 
 	function saveCompaniesSoftwareFunction(){
