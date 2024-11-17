@@ -33,11 +33,17 @@ $(function(){
     });
     //--FINISH button Save role from m_companies.html
 
-    //--START button Save company from m_carriers.html
+    //--START button Save carriers from m_carriers.html
     $('#btn-save-carriers-maintenance').click(function() {
       carriers_page_save_button();
     });
     //--FINISH button Save role from m_carriers.html
+
+    //--START button Save referral from m_referral_source.html
+    $('#btn-save-referral-source').click(function() {
+      referral_source_save_button();
+    });
+    //--FINISH button Save role from m_referral_source.html
 
     //--START button Next from new_order1.html
     // Guardar datos y pasar a la siguiente página
@@ -93,6 +99,125 @@ function new_function(){
       }    
     });
   }
+}
+
+function referral_source_save_button() {
+    const name = $('#referral-name-txt').val();
+    const description = $('#referral-description-txt').val();
+    const id = $('#btn-save-referral-source').data('referral-id');
+
+    if (!name) {
+        alert('Name is required!');
+        return;
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_referral_source',
+            name: name,
+            description: description,
+            id: id || ''
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                window.location.replace('m_referral_source.html');
+            } else {
+                alert(response.error);
+            }
+        },
+        error: function() {
+            alert('Error saving referral source. Please contact your administrator.');
+        }
+    });
+}
+
+function getReferralSourceInfo(id) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_referral_source_info',
+            id: id
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const data = response.data;
+                $('#referral-name-txt').val(data.name);
+                $('#referral-description-txt').val(data.description);
+                $('#btn-save-referral-source').data('referral-id', id);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function load_referral_sources() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { option: 'load_referral_sources' },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '';
+                response.data.forEach(source => {
+                    const checked = source.status == 1 ? 'checked' : '';
+                    html += `
+                        <tr>
+                            <td>${source.id}</td>
+                            <td><a href="#" class="edit" data-id="${source.id}">${source.name}</a></td>
+                            <td>${source.description}</td>
+                            <td>${source.date_created}</td>
+                            <td>
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input status" 
+                                               id="customSwitch${source.id}" data-id="${source.id}" ${checked}>
+                                        <label class="custom-control-label" for="customSwitch${source.id}"></label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+
+                // Destruir DataTable existente si ya está inicializada
+                if ($.fn.DataTable.isDataTable('.table')) {
+                    $('.table').DataTable().destroy();
+                }
+
+                // Actualizar la tabla
+                $('.table tbody').html(html);
+
+                // Re-inicializar DataTable
+                $('.table').DataTable({
+                    "searching": true,
+                    "paging": true,
+                    "info": true
+                });
+
+                // Agregar event listeners
+                $('.status').on('change', function() {
+                    const id = $(this).data('id');
+                    const newStatus = $(this).is(':checked') ? 1 : 0;
+                    updateStatus(id, newStatus, 'referral_source');
+                });
+
+                $('.edit').on('click', function(e) {
+                    e.preventDefault();
+                    const id = $(this).data('id');
+                    getReferralSourceInfo(id);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
 }
 
 // Función para guardar/actualizar carrier

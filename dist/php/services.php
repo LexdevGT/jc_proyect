@@ -39,6 +39,9 @@
 			case 'load_carriers':
 			    loadCarriersFunction();
 			    break;
+			case 'load_referral_sources':
+			    loadReferralSourcesFunction();
+			    break;
 			case 'update_role_status':
 				updateRoleStatusFunction();
 				break;
@@ -56,6 +59,9 @@
 				break;
 			case 'save_carrier':
 			    saveCarrierFunction();
+			    break;
+			case 'save_referral_source':
+			    saveReferralSourceFunction();
 			    break;
 			case 'update_user':
 				updateUserFunction();
@@ -81,6 +87,9 @@
 			case 'get_carrier_info':
 			    getCarrierInfoFunction();
 			    break;
+			case 'get_referral_source_info':
+			    getReferralSourceInfoFunction();
+			    break;
 		}
 	}
 
@@ -104,6 +113,93 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function loadReferralSourcesFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+	    
+	    $query = "SELECT id, name, description, 
+	              DATE_FORMAT(date_created, '%d-%m-%Y') as date_created, 
+	              status 
+	              FROM referral_source 
+	              ORDER BY name";
+	    
+	    $result = $conn->query($query);
+	    
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading referral sources';
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function saveReferralSourceFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+	    
+	    $name = $_POST['name'];
+	    $description = $_POST['description'];
+	    $id = isset($_POST['id']) ? $_POST['id'] : '';
+	    
+	    try {
+	        if ($id) {
+	            // Update
+	            $query = "UPDATE referral_source SET 
+	                     name = ?, description = ? 
+	                     WHERE id = ?";
+	            
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param("ssi", $name, $description, $id);
+	            
+	            if ($stmt->execute()) {
+	                $jsondata['message'] = 'Referral source updated successfully!';
+	            } else {
+	                throw new Exception("Error updating referral source");
+	            }
+	        } else {
+	            // Insert
+	            $query = "INSERT INTO referral_source (name, description, date_created, status) 
+	                     VALUES (?, ?, NOW(), 1)";
+	            
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param("ss", $name, $description);
+	            
+	            if ($stmt->execute()) {
+	                $jsondata['message'] = 'Referral source saved successfully!';
+	            } else {
+	                throw new Exception("Error saving referral source");
+	            }
+	        }
+	    } catch (Exception $e) {
+	        $jsondata['error'] = 'Error: ' . $e->getMessage();
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function getReferralSourceInfoFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+	    
+	    $id = $_POST['id'];
+	    
+	    $query = "SELECT * FROM referral_source WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $id);
+	    
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching referral source data';
+	    }
+	    
+	    echo json_encode($jsondata);
 	}
 
 	function saveCarrierFunction() {
