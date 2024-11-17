@@ -26,8 +26,12 @@
   <link rel="stylesheet" href="../dist/css/adminlte.min.css">
   <!-- overlayScrollbars -->
   <link rel="stylesheet" href="../plugins/overlayScrollbars/css/OverlayScrollbars.min.css">
+  <!-- DataTables -->
+  <link rel="stylesheet" href="../plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
+  <link rel="stylesheet" href="../plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
+  <link rel="stylesheet" href="../plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
  
-  </head>
+</head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
 
@@ -38,8 +42,6 @@
 
   <!-- Navbar -->
   <nav class="main-header navbar navbar-expand navbar-white navbar-light">
-    <!-- Left navbar links -->
-
     <!-- Right navbar links -->
     <ul class="navbar-nav ml-auto">
       <!-- Notifications Dropdown Menu -->
@@ -71,9 +73,9 @@
         </a>
       </li>
       <li class="nav-item">
-        <a class="nav-link"  href="#">
+        <a class="nav-link" href="#">
             User Name
-         </a>
+        </a>
       </li>
     </ul>
   </nav>
@@ -83,8 +85,6 @@
   <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
     <a href="index3.html" class="brand-link">
-      <!--<img src="dist/img/AdminLTELogo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
-      <span class="brand-text font-weight-light">AdminLTE 3</span>-->
       <span class="brand-text font-weight-light">Advanced Transports</span>
     </a>
 
@@ -93,16 +93,12 @@
       <!-- Sidebar Menu -->
       <nav class="mt-2">
         <ul class="nav nav-pills nav-sidebar flex-column" id="left-nav-bar" data-widget="treeview" role="menu" data-accordion="false">
-          <!-- Add icons to the links using the .nav-icon class
-               with font-awesome or any other icon font library -->
-          
         </ul>
       </nav>
       <!-- /.sidebar-menu -->
     </div>
     <!-- /.sidebar -->
   </aside>
-
   <!-- Content Wrapper. Contains page content -->
   <div class="content-wrapper">
     <!-- Content Header (Page header) -->
@@ -125,103 +121,41 @@
           <div class="col-sm-1">
             <label>Name</label>
           </div>
-          <div class="col-sm">
-            <input class="form-control" type="text" id="customer-name-txt">
+          <div class="col-sm-5">
+            <input class="form-control" type="text" id="referral-name-txt">
           </div>
           <div class="col-sm-1">
             <label>Description</label>
           </div>
-          <div class="col-sm">
-            <input class="form-control" type="text" id="customer-lastname-txt">
-          </div>
-          <div class="col-sm-1">
-            <label>Contact Name</label>
-          </div>
-          <div class="col-sm">
-            <input class="form-control" type="text" id="customer-phone-txt">
-          </div>
-          <div class="col-sm-1">
-            <label>Phone</label>
-          </div>
-          <div class="col-sm">
-            <input class="form-control" type="text" id="customer-email-txt">
+          <div class="col-sm-5">
+            <input class="form-control" type="text" id="referral-description-txt">
           </div>
         </div>
         <!-- /.MAIN ROW -->
         <!-- button row -->
         <div class="row">
           <div class="col-sm-1">
-            <button class="btn btn-block btn-outline-dark mt-2" type="button" id="btn-save-companies-maintenance">Save!</button>  
+            <button class="btn btn-block btn-outline-dark mt-2" type="button" id="btn-save-referral-source">Save!</button>  
           </div>
         </div>
         <!-- button row -->
-         <!-- /.row -->
+        <!-- /.row -->
         <div class="row mt-4">
           <div class="col-12">
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title">Referral Sources</h3>
-
-                <div class="card-tools">
-                  <div class="input-group input-group-sm" style="width: 150px;">
-                    <input type="text" name="table_search" class="form-control float-right" placeholder="Search">
-
-                    <div class="input-group-append">
-                      <button type="submit" class="btn btn-default">
-                        <i class="fas fa-search"></i>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <!-- /.card-header -->
-              <div class="card-body table-responsive p-0" style="height: 300px;">
+            <div class="card table-responsive">
                 <table class="table table-head-fixed text-nowrap">
                   <thead>
                     <tr>
                       <th>ID</th>
                       <th>Name</th>
                       <th>Description</th>
-                      <th>Contact Name</th>
-                      <th>Phone</th>
+                      <th>Date Created</th>
                       <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td>1</td>
-                      <td>Inbound Call</td>
-                      <td>Inbound call from unknown source</td>
-                      <td></td>
-                      <td></td>
-                      <td>
-                        <div class="form-group">
-                          <div class="custom-control custom-switch custom-switch-on-success">
-                            <input type="checkbox" class="custom-control-input " id="customSwitch1" checked>
-                            <label class="custom-control-label" for="customSwitch1"></label>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td>2</td>
-                      <td>Repeat Customer</td>
-                      <td>Returning custmomer</td>
-                      <td></td>
-                      <td></td>
-                      <td>
-                        <div class="form-group">
-                          <div class="custom-control custom-switch custom-switch-on-success">
-                            <input type="checkbox" class="custom-control-input " id="customSwitch2" checked>
-                            <label class="custom-control-label" for="customSwitch2"></label>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
                   </tbody>
                 </table>
-              </div>
-              <!-- /.card-body -->
             </div>
             <!-- /.card -->
           </div>
@@ -247,7 +181,6 @@
   <!-- /.control-sidebar -->
 </div>
 <!-- ./wrapper -->
-
 <!-- jQuery -->
 <script src="../plugins/jquery/jquery.min.js"></script>
 <!-- jQuery UI 1.11.4 -->
@@ -263,6 +196,19 @@
 <!-- daterangepicker -->
 <script src="../plugins/moment/moment.min.js"></script>
 <script src="../plugins/daterangepicker/daterangepicker.js"></script>
+<!-- DataTables  & Plugins -->
+<script src="../plugins/datatables/jquery.dataTables.min.js"></script>
+<script src="../plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
+<script src="../plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
+<script src="../plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
+<script src="../plugins/datatables-buttons/js/dataTables.buttons.min.js"></script>
+<script src="../plugins/datatables-buttons/js/buttons.bootstrap4.min.js"></script>
+<script src="../plugins/jszip/jszip.min.js"></script>
+<script src="../plugins/pdfmake/pdfmake.min.js"></script>
+<script src="../plugins/pdfmake/vfs_fonts.js"></script>
+<script src="../plugins/datatables-buttons/js/buttons.html5.min.js"></script>
+<script src="../plugins/datatables-buttons/js/buttons.print.min.js"></script>
+<script src="../plugins/datatables-buttons/js/buttons.colVis.min.js"></script>
 <!-- Tempusdominus Bootstrap 4 -->
 <script src="../plugins/tempusdominus-bootstrap-4/js/tempusdominus-bootstrap-4.min.js"></script>
 <!-- overlayScrollbars -->
@@ -271,30 +217,15 @@
 <script src="../dist/js/adminlte.js"></script>
 <!-- Advanced Transports -->
 <script src="../dist/js/core.js"></script>
-
-<script type="text/javascript">
-  $(function(){
-    //Initialize Select2 Elements
-    $('.select2').select2()
-
-    //Date picker
-    $('#first_available_pickup_date').datetimepicker({
-        format: 'L'
-    });
-
-    $('#btn_new_order1_next').click(function(){
-      window.location.replace("new_order2.html");
-    })
-  })
-</script>
-
 <script type="text/javascript">
   setTimeout(
-  function() 
-  {
-    $('.nav-link').removeClass('active');
-    $('.nav-link').find('i.referral').parent().addClass( "active" );
-  }, 1200);
+    function() {
+      $('.nav-link').removeClass('active');
+      $('.nav-link').find('i.referral').parent().addClass("active");
+    }, 1200);
+  
+  load_referral_sources();
 </script>
+
 </body>
 </html>
