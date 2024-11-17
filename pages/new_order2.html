@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Advanced Transports | Dashboard</title>
+
+  <!-- Google Font: Source Sans Pro -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="../plugins/fontawesome-free/css/all.min.css">
+  <!-- Ionicons -->
+  <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+  <!-- Select2 -->
+  <link rel="stylesheet" href="../plugins/select2/css/select2.min.css">
+  <link rel="stylesheet" href="../plugins/select2-bootstrap4-theme/select2-bootstrap4.min.css">
+   <!-- Daterange picker -->
+  <link rel="stylesheet" href="../plugins/daterangepicker/daterangepicker.css">
+  <!-- Tempusdominus Bootstrap 4 -->
+  <link rel="stylesheet" href="../plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css">
+  <!-- iCheck -->
+  <link rel="stylesheet" href="../plugins/icheck-bootstrap/icheck-bootstrap.min.css">
+  <!-- JQVMap -->
+  <link rel="stylesheet" href="../plugins/jqvmap/jqvmap.min.css">
+  <!-- Theme style -->
+  <link rel="stylesheet" href="../dist/css/adminlte.min.css">
+  <!-- overlayScrollbars -->
+  <link rel="stylesheet" href="../plugins/overlayScrollbars/css/OverlayScrollbars.min.css">
+  <style>
+    /* Estilos para el loader */
+    .loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8); /* Fondo semi-transparente */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999; /* Para estar encima de todo */
+    }
+
+    .loader img {
+      max-width: 100%;
+      height: auto;
+    }
+
+  </style>
+  </head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+  <!-- Preloader -->
+  <div class="preloader flex-column justify-content-center align-items-center bg-dark">
+    <img class="animation__shake" src="../pages/images/logo-webw.png" alt="AdminLTELogo" height="100" width="180">
+  </div>
+
+  
+
+  <!-- Navbar -->
+  <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+    <!-- Left navbar links -->
+
+    <!-- Right navbar links -->
+    <ul class="navbar-nav ml-auto">
+      <!-- Notifications Dropdown Menu -->
+      <li class="nav-item dropdown">
+        <a class="nav-link" data-toggle="dropdown" href="#">
+          <i class="far fa-bell"></i>
+          <span class="badge badge-warning navbar-badge">3</span>
+        </a>
+        <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+          <span class="dropdown-item dropdown-header">3 Notifications</span>
+          <div class="dropdown-divider"></div>
+          <a href="#" class="dropdown-item">
+            <i class="fas fa-envelope mr-2"></i> 1 new messages
+          </a>
+          <div class="dropdown-divider"></div>
+          <a href="#" class="dropdown-item">
+            <i class="fas fa-envelope mr-2"></i> 1 new messages
+          </a>
+          <div class="dropdown-divider"></div>
+          <a href="#" class="dropdown-item">
+            <i class="fas fa-envelope mr-2"></i> 1 new messages
+          </a>
+          <div class="dropdown-divider"></div>
+        </div>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-widget="fullscreen" href="#" role="button">
+          <i class="fas fa-expand-arrows-alt"></i>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link"  href="#">
+            User Name
+         </a>
+      </li>
+    </ul>
+  </nav>
+  <!-- /.navbar -->
+
+  <!-- Main Sidebar Container -->
+  <aside class="main-sidebar sidebar-dark-primary elevation-4">
+    <!-- Brand Logo -->
+    <a href="index3.html" class="brand-link">
+      <!--<img src="dist/img/AdminLTELogo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
+      <span class="brand-text font-weight-light">AdminLTE 3</span>-->
+      <span class="brand-text font-weight-light">Advanced Transports</span>
+    </a>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Sidebar Menu -->
+      <nav class="mt-2">
+        <ul class="nav nav-pills nav-sidebar flex-column" id="left-nav-bar" data-widget="treeview" role="menu" data-accordion="false">
+          <!-- Add icons to the links using the .nav-icon class
+               with font-awesome or any other icon font library -->
+          
+        </ul>
+      </nav>
+      <!-- /.sidebar-menu -->
+    </div>
+    <!-- /.sidebar -->
+  </aside>
+
+  <!-- Content Wrapper. Contains page content -->
+  <div class="content-wrapper">
+    <!-- Content Header (Page header) -->
+    <div class="content-header">
+      <div class="container-fluid">
+        <div class="row mb-2">
+          <div class="col-sm-6">
+            <h1 class="m-0">New Order</h1>
+            <!-- loader -->
+            <div class="loader flex-column justify-content-center align-items-center " style="display: none;">
+              <img class="loader__img" src="../pages/images/logo-webw.png" alt="AdminLTELogo" height="100" width="180">
+              <span style="color: white;">Loading...</span>
+            </div>
+          </div><!-- /.col -->
+        </div><!-- /.row -->
+      </div><!-- /.container-fluid -->
+    </div>
+    <!-- /.content-header -->
+
+    <!-- Main content -->
+    <section class="content">
+      <div class="container-fluid">
+        <!-- MAIN ROW -->
+        <div class="row">
+          <!-- LEFT COL -->
+          <div class="col-sm-6">
+            <div class="row">
+              <div class="col">
+                <h5 class="m-0">Origin</h5>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <div class="row">
+                  <div class="col-lg-6">
+                    <div class="form-group">
+                      <label>Zip Code Search</label>
+                      <select class="form-control select2" id="zip_origin">
+                        <option>Loading zip codes...</option>
+                      </select>
+                  </div>  
+                </div>
+                <div class="col-lg-6">
+                  <div class="form-group">
+                    <label>City Search</label>
+                    <select class="form-control select2" id="city_origin">
+                      <option>Loading cities...</option>
+                    </select>
+                  </div>  
+                </div>
+              </div> 
+              </div>
+            </div>
+            <!--
+            <div class="row">
+              <div class="col">
+                <div class="form-group">
+                  <label>Address Search</label>
+                  <input type="text" id="address_search_origin" class="form-control">
+                </div>  
+              </div>
+            </div>
+          -->
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Saved Contact</label>
+                  <select class="form-control select2" id="contact_origin">
+                    <option>No saved contacts</option>
+                  </select>
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Auction Site</label>
+                  <select class="form-control select2" id="action_site_origin">
+                    <option>No auction sites</option>
+                  </select>
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Terminal</label>
+                  <select class="form-control select2" id="terminal_origin">
+                    <option>No terminals</option>
+                  </select>
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Origin Type</label>
+                  <select class="form-control select2" id="origin_type_origin">
+                    <option>Type 1</option>
+                    <option>Type 2</option>
+                  </select>
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <h5 class="m-0">Origin Address Detail</h5>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <div class="form-group">
+                  <label>Origin Address</label>
+                  <input type="text" id="origin_address1" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <div class="form-group">
+                  <label>Origin Address 2</label>
+                  <input type="text" id="origin_address2" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Origin City</label>
+                  <input type="text" id="origin_city_txt" class="form-control">
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Origin State</label>
+                  <input type="text" id="origin_state_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Origin Contact Postal Code</label>
+                  <input type="text" id="origin_postal_code_txt" class="form-control">
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Origin Country</label>
+                  <input type="text" id="origin_country_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Origin Contact Name</label>
+                  <input type="text" id="origin_contact_name_txt" class="form-control">
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Origin Contact Phone 1</label>
+                  <input type="text" id="origin_contact_phone1_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Origin Contact Email</label>
+                  <input type="text" id="origin_email_txt" class="form-control">
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Origin Contact Phone2</label>
+                  <input type="text" id="origin_contact_phone2_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Origin Contact Phone Cell</label>
+                  <input type="text" id="origin_contact_phone_cell_txt" class="form-control">
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Origin Company Name</label>
+                  <input type="text" id="origin_company_name_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+          </div>
+          <!-- /. LEFT COL -->
+          <!-- RIGHT COL -->
+          <div class="col-sm-6">
+            <div class="row">
+              <div class="col">
+                <h5 class="m-0">Destination</h5>  
+              </div>
+            </div>
+            <div class="row">
+                  <div class="col-lg-6">
+                    <div class="form-group">
+                      <label>Zip Code Search</label>
+                      <select class="form-control select2" id="destinantion_zip">
+                        <option>Loading zip codes...</option>
+                      </select>
+                  </div>  
+                </div>
+                <div class="col-lg-6">
+                  <div class="form-group">
+                    <label>City Search</label>
+                    <select class="form-control select2" id="destination_city">
+                      <option>Loading cities...</option>
+                    </select>
+                  </div>  
+                </div>
+              </div> 
+            <!--
+            <div class="row">
+              <div class="col">
+                <div class="form-group">
+                  <label>Address Search</label>
+                  <input type="text" id="destination_address_search" class="form-control">
+                </div>  
+              </div>
+            </div>
+          -->
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Saved Contact</label>
+                  <select class="form-control select2" id="destination_contact">
+                    <option>Contact 1</option>
+                    <option>Contact 2</option>
+                  </select>
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Auction Site</label>
+                  <select class="form-control select2" id="destination_auction_site">
+                    <option>Site 1</option>
+                    <option>Site 2</option>
+                  </select>
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Terminal</label>
+                  <select class="form-control select2" id="destination_terminal">
+                    <option>Terminal 1</option>
+                    <option>Terminal 2</option>
+                  </select>
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Destination Type</label>
+                  <select class="form-control select2" id="destination_origin_type">
+                    <option>Type 1</option>
+                    <option>Type 2</option>
+                  </select>
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <h5 class="m-0">Destination Address Detail</h5>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <div class="form-group">
+                  <label>Destination Address</label>
+                  <input type="text" id="destination_address1_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col">
+                <div class="form-group">
+                  <label>Destination Address 2</label>
+                  <input type="text" id="destination_address2_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Destination City</label>
+                  <input type="text" id="destination_city_txt" class="form-control">
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Destination State</label>
+                  <input type="text" id="destination_state_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Destination Postal Code</label>
+                  <input type="text" id="destination_postal_code_txt" class="form-control">
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Destination Country</label>
+                  <input type="text" id="destination_country_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Destination Contact Name</label>
+                  <input type="text" id="destination_contact_name_txt" class="form-control">
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Destination Contact Phone 1</label>
+                  <input type="text" id="destination_contact_phone1_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Destination Contact Email</label>
+                  <input type="text" id="destination_email_txt" class="form-control">
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Destination Contact Phone2</label>
+                  <input type="text" id="destination_contact_phone2_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Destination Contact Phone Cell</label>
+                  <input type="text" id="destination_contact_phone_cell_txt" class="form-control">
+                </div>  
+              </div>
+              <div class="col-sm-6">
+                <div class="form-group">
+                  <label>Destination Company Name</label>
+                  <input type="text" id="destination_company_name_txt" class="form-control">
+                </div>  
+              </div>
+            </div>
+            </div>
+          </div>
+          <!-- /. RIGHT COL -->
+        </div>
+        <!-- /.MAIN ROW -->
+        <!-- button row -->
+        <div class="row">
+          <div class="col">
+            <button class="btn btn-block btn-outline-dark mt-2" type="button" id="btn_new_order2_save">Save!</button>  
+          </div>
+        </div>
+        <!-- button row -->
+      </div><!-- /.container-fluid -->
+    </section>
+    <!-- /.content -->
+  </div>
+  <!-- /.content-wrapper -->
+  <footer class="main-footer">
+    <strong>Copyright &copy; 2023-2024 <a href="https://www.advanced-transports.com/">Advanced Transports</a>.</strong>
+    All rights reserved.
+    <div class="float-right d-none d-sm-inline-block">
+      <b>Version</b> 1.0
+    </div>
+  </footer>
+
+  <!-- Control Sidebar -->
+  <aside class="control-sidebar control-sidebar-dark">
+    <!-- Control sidebar content goes here -->
+  </aside>
+  <!-- /.control-sidebar -->
+</div>
+<!-- ./wrapper -->
+
+<!-- jQuery -->
+<script src="../plugins/jquery/jquery.min.js"></script>
+<!-- jQuery UI 1.11.4 -->
+<script src="../plugins/jquery-ui/jquery-ui.min.js"></script>
+<!-- Resolve conflict in jQuery UI tooltip with Bootstrap tooltip -->
+<script>
+  $.widget.bridge('uibutton', $.ui.button)
+</script>
+<!-- Bootstrap 4 -->
+<script src="../plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+<!-- Select2 -->
+<script src="../plugins/select2/js/select2.full.min.js"></script>
+<!-- daterangepicker -->
+<script src="../plugins/moment/moment.min.js"></script>
+<script src="../plugins/daterangepicker/daterangepicker.js"></script>
+<!-- Tempusdominus Bootstrap 4 -->
+<script src="../plugins/tempusdominus-bootstrap-4/js/tempusdominus-bootstrap-4.min.js"></script>
+<!-- overlayScrollbars -->
+<script src="../plugins/overlayScrollbars/js/jquery.overlayScrollbars.min.js"></script>
+<!-- AdminLTE App -->
+<script src="../dist/js/adminlte.js"></script>
+<!-- Advanced Transports -->
+<script src="../dist/js/core.js"></script>
+<script type="text/javascript">
+  $(function(){
+    //Initialize Select2 Elements
+    $('.select2').select2()
+
+    //Date picker
+    $('#first_available_pickup_date').datetimepicker({
+        format: 'L'
+    });
+
+  })
+</script>
+<script type="text/javascript">
+  setTimeout(
+  function() 
+  {
+    $('.nav-link').removeClass('active');
+    $('.nav-link').find('i.fa-table').parent().addClass( "active" );
+  }, 1200);
+  load_new_order2();
+</script>
+</body>
+</html>
