@@ -42,6 +42,9 @@
 			case 'load_referral_sources':
 			    loadReferralSourcesFunction();
 			    break;
+			case 'load_teams':
+			    loadTeamsFunction();
+			    break;
 			case 'update_role_status':
 				updateRoleStatusFunction();
 				break;
@@ -63,6 +66,9 @@
 			case 'save_referral_source':
 			    saveReferralSourceFunction();
 			    break;
+			case 'save_team':
+			    saveTeamFunction();
+			    break;
 			case 'update_user':
 				updateUserFunction();
 				break;	
@@ -72,6 +78,9 @@
 			case 'update_status':
 				updateStatusFunction();
 				break;
+			case 'update_team_members':
+			    updateTeamMembersFunction();
+			    break;
 			case 'get_user_info':
 				getUserInfoFunction();
 				break;
@@ -89,6 +98,12 @@
 			    break;
 			case 'get_referral_source_info':
 			    getReferralSourceInfoFunction();
+			    break;
+			case 'get_team_info':
+			    getTeamInfoFunction();
+			    break;
+			case 'get_available_users':
+			    getAvailableUsersFunction();
 			    break;
 		}
 	}
@@ -113,6 +128,135 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function loadTeamsFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+	    
+	    $query = "SELECT t.id, t.name, t.description, 
+	              DATE_FORMAT(t.date_created, '%d-%m-%Y') as date_created,
+	              t.status,
+	              GROUP_CONCAT(CONCAT(u.name, ' ', u.last_name) SEPARATOR ', ') as members
+	              FROM teams t
+	              LEFT JOIN team_members tm ON t.id = tm.team_id
+	              LEFT JOIN users u ON tm.user_id = u.id
+	              GROUP BY t.id
+	              ORDER BY t.name";
+	    
+	    $result = $conn->query($query);
+	    
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading teams';
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function saveTeamFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+	    
+	    try {
+	        $conn->begin_transaction();
+	        
+	        $name = $_POST['name'];
+	        $description = $_POST['description'];
+	        $members = isset($_POST['members']) ? json_decode($_POST['members'], true) : [];
+	        $teamId = isset($_POST['id']) ? $_POST['id'] : null;
+	        
+	        if ($teamId) {
+	            // Update
+	            $query = "UPDATE teams SET name = ?, description = ? WHERE id = ?";
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param("ssi", $name, $description, $teamId);
+	            $stmt->execute();
+
+	            // Delete existing members
+	            $query = "DELETE FROM team_members WHERE team_id = ?";
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param("i", $teamId);
+	            $stmt->execute();
+	        } else {
+	            // Insert
+	            $query = "INSERT INTO teams (name, description) VALUES (?, ?)";
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param("ss", $name, $description);
+	            $stmt->execute();
+	            $teamId = $conn->insert_id;
+	        }
+
+	        // Insert new members
+	        if (!empty($members)) {
+	            $query = "INSERT INTO team_members (team_id, user_id) VALUES (?, ?)";
+	            $stmt = $conn->prepare($query);
+	            foreach ($members as $userId) {
+	                $stmt->bind_param("ii", $teamId, $userId);
+	                $stmt->execute();
+	            }
+	        }
+
+	        $conn->commit();
+	        $jsondata['message'] = $teamId ? 'Team updated successfully!' : 'Team saved successfully!';
+	        
+	    } catch (Exception $e) {
+	        $conn->rollback();
+	        $jsondata['error'] = 'Error: ' . $e->getMessage();
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function getTeamInfoFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+	    
+	    $id = $_POST['id'];
+	    
+	    $query = "SELECT t.*, 
+	              GROUP_CONCAT(tm.user_id) as member_ids
+	              FROM teams t
+	              LEFT JOIN team_members tm ON t.id = tm.team_id
+	              WHERE t.id = ?
+	              GROUP BY t.id";
+	              
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $id);
+	    
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching team data';
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function getAvailableUsersFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+	    
+	    $query = "SELECT id, CONCAT(name, ' ', last_name) as full_name 
+	              FROM users 
+	              WHERE status = 1 
+	              ORDER BY name";
+	    
+	    $result = $conn->query($query);
+	    
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading users';
+	    }
+	    
+	    echo json_encode($jsondata);
 	}
 
 	function loadReferralSourcesFunction() {

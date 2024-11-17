@@ -101,6 +101,143 @@ function new_function(){
   }
 }
 
+// Función para guardar/actualizar team
+function team_save_button() {
+    const teamData = {
+        name: $('#team-name-txt').val(),
+        description: $('#team-description-txt').val(),
+        members: $('#team-members-select').val()
+    };
+
+    const teamId = $('#btn-save-team').data('team-id');
+
+    if (!teamData.name) {
+        alert('Team name is required!');
+        return;
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_team',
+            name: teamData.name,
+            description: teamData.description,
+            members: JSON.stringify(teamData.members),
+            id: teamId || ''
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                window.location.replace('m_teams.html');
+            } else {
+                alert(response.error);
+            }
+        },
+        error: function() {
+            alert('Error saving team. Please contact your administrator.');
+        }
+    });
+}
+
+// Función para obtener información de un team
+function getTeamInfo(teamId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_team_info',
+            id: teamId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const team = response.data;
+                $('#team-name-txt').val(team.name);
+                $('#team-description-txt').val(team.description);
+                
+                // Actualizar select de miembros
+                if (team.member_ids) {
+                    const memberIds = team.member_ids.split(',');
+                    $('#team-members-select').val(memberIds).trigger('change');
+                } else {
+                    $('#team-members-select').val(null).trigger('change');
+                }
+
+                $('#btn-save-team').data('team-id', teamId);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Función para cargar los teams
+function load_teams() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { option: 'load_teams' },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '';
+                response.data.forEach(team => {
+                    const checked = team.status == 1 ? 'checked' : '';
+                    html += `
+                        <tr>
+                            <td>${team.id}</td>
+                            <td><a href="#" class="edit" data-id="${team.id}">${team.name}</a></td>
+                            <td>${team.description}</td>
+                            <td>${team.members || ''}</td>
+                            <td>${team.date_created}</td>
+                            <td>
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input status" 
+                                               id="customSwitch${team.id}" data-id="${team.id}" ${checked}>
+                                        <label class="custom-control-label" for="customSwitch${team.id}"></label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+
+                // Destruir DataTable existente si ya está inicializada
+                if ($.fn.DataTable.isDataTable('.table')) {
+                    $('.table').DataTable().destroy();
+                }
+
+                // Actualizar la tabla
+                $('.table tbody').html(html);
+
+                // Re-inicializar DataTable
+                $('.table').DataTable({
+                    "searching": true,
+                    "paging": true,
+                    "info": true
+                });
+
+                // Agregar event listeners
+                $('.status').on('change', function() {
+                    const id = $(this).data('id');
+                    const newStatus = $(this).is(':checked') ? 1 : 0;
+                    updateStatus(id, newStatus, 'teams');
+                });
+
+                $('.edit').on('click', function(e) {
+                    e.preventDefault();
+                    const id = $(this).data('id');
+                    getTeamInfo(id);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
 function referral_source_save_button() {
     const name = $('#referral-name-txt').val();
     const description = $('#referral-description-txt').val();
@@ -1585,6 +1722,12 @@ function load_sidebar(n=0){
                   '<p>Referral Source</p>'+
                 '</a>'+
               '</li>'+
+              '<li class="nav-item">'+
+                '<a href="m_teams.html" class="nav-link">'+
+                  '<i class="far fa-circle nav-icon teams"></i>'+
+                  '<p>Teams</p>'+
+                '</a>'+
+              '</li>'+
             '</ul>'+
           '</li>';
     $("#left-nav-bar").html(sidebar_html);
@@ -1674,6 +1817,12 @@ function load_sidebar_dashboard(){
                 '<a href="pages/m_referral_source.html" class="nav-link">'+
                   '<i class="far fa-circle nav-icon referral"></i>'+
                   '<p>Referral Source</p>'+
+                '</a>'+
+              '</li>'+
+              '<li class="nav-item">'+
+                '<a href="pages/m_teams.html" class="nav-link">'+
+                  '<i class="far fa-circle nav-icon teams"></i>'+
+                  '<p>Teams</p>'+
                 '</a>'+
               '</li>'+
             '</ul>'+
