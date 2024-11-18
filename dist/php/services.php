@@ -45,6 +45,21 @@
 			case 'load_teams':
 			    loadTeamsFunction();
 			    break;
+			case 'load_customers':
+		        loadCustomersFunction();
+		        break;
+		    case 'load_companies_select':
+		        loadCompaniesSelectFunction();
+		        break;
+		    case 'load_referral_sources_select':
+        		loadReferralSourcesSelectFunction();
+        		break;
+			case 'load_users_select':
+		        loadUsersSelectFunction();
+		        break;
+		    case 'load_teams_select':
+		        loadTeamsSelectFunction();
+		        break;
 			case 'update_role_status':
 				updateRoleStatusFunction();
 				break;
@@ -69,6 +84,9 @@
 			case 'save_team':
 			    saveTeamFunction();
 			    break;
+			case 'save_customer':
+		        saveCustomerFunction();
+		        break;
 			case 'update_user':
 				updateUserFunction();
 				break;	
@@ -81,6 +99,9 @@
 			case 'update_team_members':
 			    updateTeamMembersFunction();
 			    break;
+			case 'update_customer_status':
+		        updateCustomerStatusFunction();
+		        break;
 			case 'get_user_info':
 				getUserInfoFunction();
 				break;
@@ -105,6 +126,9 @@
 			case 'get_available_users':
 			    getAvailableUsersFunction();
 			    break;
+			case 'get_customer_info':
+		        getCustomerInfoFunction();
+		        break;
 		}
 	}
 
@@ -128,6 +152,255 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function loadTeamsSelectFunction() {
+	  global $conn;
+	  $jsondata = ['error' => '', 'data' => []];
+
+	  $query = "SELECT id, name 
+	            FROM teams
+	            WHERE status = 1
+	            ORDER BY name";
+
+	  $result = $conn->query($query);
+
+	  if ($result) {
+	    while ($row = $result->fetch_assoc()) {
+	      $jsondata['data'][] = $row;
+	    }
+	  } else {
+	    $jsondata['error'] = 'Error loading teams';
+	  }
+
+	  echo json_encode($jsondata);
+	}
+
+	function loadUsersSelectFunction() {
+	  global $conn;
+	  $jsondata = ['error' => '', 'data' => []];
+
+	  $query = "SELECT id, name 
+	            FROM users
+	            WHERE status = 1
+	            ORDER BY name";
+
+	  $result = $conn->query($query);
+
+	  if ($result) {
+	    while ($row = $result->fetch_assoc()) {
+	      $jsondata['data'][] = $row;
+	    }
+	  } else {
+	    $jsondata['error'] = 'Error loading users';
+	  }
+
+	  echo json_encode($jsondata);
+	}
+
+	function loadReferralSourcesSelectFunction() {
+	  global $conn;
+	  $jsondata = ['error' => '', 'data' => []];
+
+	  $query = "SELECT id, name 
+	            FROM referral_source
+	            WHERE status = 1
+	            ORDER BY name";
+
+	  $result = $conn->query($query);
+
+	  if ($result) {
+	    while ($row = $result->fetch_assoc()) {
+	      $jsondata['data'][] = $row;
+	    }
+	  } else {
+	    $jsondata['error'] = 'Error loading referral sources';
+	  }
+
+	  echo json_encode($jsondata);
+	}
+
+	function loadCompaniesSelectFunction() {
+	  global $conn;
+	  $jsondata = ['error' => '', 'data' => []];
+
+	  $query = "SELECT id, company_name 
+	            FROM companies_software
+	            WHERE status = 1
+	            ORDER BY company_name";
+
+	  $result = $conn->query($query);
+
+	  if ($result) {
+	    while ($row = $result->fetch_assoc()) {
+	      $jsondata['data'][] = $row;
+	    }
+	  } else {
+	    $jsondata['error'] = 'Error loading companies';
+	  }
+
+	  echo json_encode($jsondata);
+	}
+
+	function loadCustomersFunction() {
+	  global $conn;
+	  $jsondata = ['error' => '', 'data' => []];
+
+	  $query = "SELECT 
+	              c.id, 
+	              c.first_name, 
+	              c.last_name, 
+	              cs.company_name, 
+	              c.phone1, 
+	              c.email1, 
+	              c.city, 
+	              t.name as assigned_team_name,
+	              DATE_FORMAT(c.date_created, '%d-%m-%Y') as date_created,
+	              c.status
+	           FROM customers c
+	           LEFT JOIN companies_software cs ON c.company_id = cs.id
+	           LEFT JOIN teams t ON c.assigned_team_id = t.id
+	           ORDER BY c.first_name, c.last_name";
+
+	  $result = $conn->query($query);
+
+	  if ($result) {
+	    while ($row = $result->fetch_assoc()) {
+	      $jsondata['data'][] = $row;
+	    }
+	  } else {
+	    $jsondata['error'] = 'Error loading customers';
+	  }
+
+	  echo json_encode($jsondata);
+	}
+
+	function saveCustomerFunction() {
+		global $conn;
+		$jsondata = ['error' => '', 'message' => ''];
+
+		$customerData = json_decode($_POST['customer_data'], true);
+		$customerId = isset($_POST['customer_id']) ? $_POST['customer_id'] : null;
+
+		try {
+		$conn->begin_transaction();
+
+		if ($customerId) {
+		  // Update customer
+		  $query = "UPDATE customers SET
+		            first_name = ?, last_name = ?, company_id = ?,
+		            phone1 = ?, is_mobile1 = ?, email1 = ?,
+		            phone2 = ?, is_mobile2 = ?, email2 = ?,
+		            address1 = ?, address2 = ?, city = ?, state = ?,
+		            zip = ?, country = ?, referral_source_id = ?,
+		            assigned_user_id = ?, assigned_team_id = ?, additional_info = ?
+		            WHERE id = ?";
+		  $stmt = $conn->prepare($query);
+		  $stmt->bind_param(
+		    "ssisssissssssssssisi",
+		    $customerData['first_name'], $customerData['last_name'], $customerData['company_id'],
+		    $customerData['phone1'], $customerData['is_mobile1'], $customerData['email1'],
+		    $customerData['phone2'], $customerData['is_mobile2'], $customerData['email2'],
+		    $customerData['address1'], $customerData['address2'], $customerData['city'], $customerData['state'],
+		    $customerData['zip'], $customerData['country'], $customerData['referral_source_id'],
+		    $customerData['assigned_user_id'], $customerData['assigned_team_id'], $customerData['additional_info'],
+		    $customerId
+		  );
+		} else {
+		  // Insert new customer
+		  $query = "INSERT INTO customers (
+		            first_name, last_name, company_id, phone1, is_mobile1, email1,
+		            phone2, is_mobile2, email2, address1, address2, city, state,
+		            zip, country, referral_source_id, assigned_user_id, assigned_team_id, additional_info,
+		            date_created, status
+		          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 1)";
+		  $stmt = $conn->prepare($query);
+		  $stmt->bind_param(
+		    "ssisssisssssssssssi",
+		    $customerData['first_name'], $customerData['last_name'], $customerData['company_id'],
+		    $customerData['phone1'], $customerData['is_mobile1'], $customerData['email1'],
+		    $customerData['phone2'], $customerData['is_mobile2'], $customerData['email2'],
+		    $customerData['address1'], $customerData['address2'], $customerData['city'], $customerData['state'],
+		    $customerData['zip'], $customerData['country'], $customerData['referral_source_id'],
+		    $customerData['assigned_user_id'], $customerData['assigned_team_id'], $customerData['additional_info']
+		  );
+		}
+
+		$stmt->execute();
+
+		$conn->commit();
+		$jsondata['message'] = $customerId ? 'Customer updated successfully!' : 'Customer saved successfully!';
+		} catch (Exception $e) {
+		$conn->rollback();
+		$jsondata['error'] = 'Error: ' . $e->getMessage();
+		}
+
+		echo json_encode($jsondata);
+		}
+
+	function updateCustomerStatusFunction() {
+	  global $conn;
+	  $jsondata = ['error' => '', 'message' => ''];
+
+	  $customerId = $_POST['customer_id'];
+	  $status = $_POST['status'];
+
+	  $query = "UPDATE customers SET status = ? WHERE id = ?";
+	  $stmt = $conn->prepare($query);
+	  $stmt->bind_param("ii", $status, $customerId);
+
+	  if ($stmt->execute()) {
+	    $jsondata['message'] = 'Customer status updated successfully!';
+	  } else {
+	    $jsondata['error'] = 'Error updating customer status: ' . $conn->error;
+	  }
+
+	  echo json_encode($jsondata);
+	}
+
+	function getCustomerInfoFunction() {
+	  global $conn;
+	  $jsondata = ['error' => '', 'data' => null];
+
+	  $customerId = $_POST['customer_id'];
+
+	  $query = "SELECT 
+	              c.id, 
+	              c.first_name, 
+	              c.last_name, 
+	              c.company_id, 
+	              cs.company_name,
+	              c.phone1, 
+	              c.is_mobile1, 
+	              c.email1, 
+	              c.phone2, 
+	              c.is_mobile2, 
+	              c.email2, 
+	              c.address1, 
+	              c.address2, 
+	              c.city, 
+	              c.state, 
+	              c.zip, 
+	              c.country, 
+	              c.referral_source_id, 
+	              c.assigned_user_id, 
+	              c.assigned_team_id, 
+	              c.additional_info
+	            FROM customers c
+	            LEFT JOIN companies_software cs ON c.company_id = cs.id
+	            WHERE c.id = ?";
+
+	  $stmt = $conn->prepare($query);
+	  $stmt->bind_param("i", $customerId);
+
+	  if ($stmt->execute()) {
+	    $result = $stmt->get_result();
+	    $jsondata['data'] = $result->fetch_assoc();
+	  } else {
+	    $jsondata['error'] = 'Error fetching customer data';
+	  }
+//error_log(print_r($jsondata,true));
+	  echo json_encode($jsondata);
 	}
 
 	function loadTeamsFunction() {
@@ -730,7 +1003,7 @@
 		$jsondata['error']   	= $error;
 		echo json_encode($jsondata);
 	}
-
+/*
 	function getCustomerInfoFunction(){
 		global $conn;
 		$jsondata = array();
@@ -755,7 +1028,7 @@
 		$jsondata['error'] = $error;
 		echo json_encode($jsondata);
 	}
-
+*/
 	function loadTransportTypeFunction(){
 		global $conn;
 		$jsondata = array();
