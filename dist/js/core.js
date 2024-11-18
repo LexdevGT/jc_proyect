@@ -107,6 +107,34 @@ function new_function(){
   }
 }
 
+function updateCustomerStatus(customerId, newStatus) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'update_customer_status',
+            customer_id: customerId,
+            status: newStatus
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                load_customers(); // Recargar la tabla para mostrar los cambios
+            } else {
+                alert(response.error);
+                // Revertir el switch si hubo error
+                $(`#customSwitch${customerId}`).prop('checked', !newStatus);
+            }
+        },
+        error: function() {
+            alert('Error updating customer status. Please contact your administrator.');
+            // Revertir el switch si hubo error
+            $(`#customSwitch${customerId}`).prop('checked', !newStatus);
+        }
+    });
+}
+
 // Función para cargar la lista de equipos en el select
 function load_teams_select() {
   $.ajax({
