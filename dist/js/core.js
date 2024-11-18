@@ -31,7 +31,7 @@ $(function(){
     $('#btn-save-companies-maintenance').click(function(){
       companies_page_save_button();
     });
-    //--FINISH button Save role from m_companies.html
+    //--FINISH button Save company from m_companies.html
 
     //--START button Save carriers from m_carriers.html
     $('#btn-save-carriers-maintenance').click(function() {
@@ -43,7 +43,13 @@ $(function(){
     $('#btn-save-referral-source').click(function() {
       referral_source_save_button();
     });
-    //--FINISH button Save role from m_referral_source.html
+    //--FINISH button Save referral from m_referral_source.html
+
+    //--START button Save customer from m_customer.html
+    $('#btn-save-customer').click(function() {
+      customer_save_button();
+    });
+    //--FINISH button Save customer from m_customer.html
 
     //--START button Next from new_order1.html
     // Guardar datos y pasar a la siguiente página
@@ -99,6 +105,281 @@ function new_function(){
       }    
     });
   }
+}
+
+// Función para cargar la lista de equipos en el select
+function load_teams_select() {
+  $.ajax({
+    type: "POST",
+    url: "../dist/php/services.php",
+    data: {
+      option: 'load_teams_select'
+    },
+    dataType: "json",
+    success: function(response) {
+      if (response.error === '') {
+        let teamsHtml = '<option value="" disabled selected>Select a team</option>';
+        response.data.forEach(team => {
+          teamsHtml += `<option value="${team.id}">${team.name}</option>`;
+        });
+        $('#customer-team-select').html(teamsHtml);
+      } else {
+        alert(response.error);
+      }
+    }
+  });
+}
+
+// Función para cargar la lista de usuarios en el select
+function load_users_select() {
+  $.ajax({
+    type: "POST",
+    url: "../dist/php/services.php",
+    data: {
+      option: 'load_users_select'
+    },
+    dataType: "json",
+    success: function(response) {
+      if (response.error === '') {
+        let usersHtml = '<option value="" disabled selected>Select a user</option>';
+        response.data.forEach(user => {
+          usersHtml += `<option value="${user.id}">${user.name}</option>`;
+        });
+        $('#customer-user-select').html(usersHtml);
+      } else {
+        alert(response.error);
+      }
+    }
+  });
+}
+
+// Función para cargar la lista de fuentes de referencia en el select
+function load_referral_sources_select() {
+  $.ajax({
+    type: "POST",
+    url: "../dist/php/services.php",
+    data: {
+      option: 'load_referral_sources_select'
+    },
+    dataType: "json",
+    success: function(response) {
+      if (response.error === '') {
+        let referralSourcesHtml = '<option value="" disabled selected>Select a referral source</option>';
+        response.data.forEach(source => {
+          referralSourcesHtml += `<option value="${source.id}">${source.name}</option>`;
+        });
+        $('#customer-referral-select').html(referralSourcesHtml);
+      } else {
+        alert(response.error);
+      }
+    }
+  });
+}
+
+// Función para cargar la lista de compañías en el select
+function load_companies_select() {
+  $.ajax({
+    type: "POST",
+    url: "../dist/php/services.php",
+    data: {
+      option: 'load_companies_select'
+    },
+    dataType: "json",
+    success: function(response) {
+      if (response.error === '') {
+        let companiesHtml = '<option value="" disabled selected>Select a company</option>';
+        response.data.forEach(company => {
+          companiesHtml += `<option value="${company.id}">${company.company_name}</option>`;
+        });
+        $('#customer-company-select').html(companiesHtml);
+      } else {
+        alert(response.error);
+      }
+    }
+  });
+}
+
+// Función para cargar la lista de clientes
+function load_customers() {
+  $.ajax({
+    type: "POST",
+    url: "../dist/php/services.php",
+    data: { 
+      option: 'load_customers'
+    },
+    dataType: "json",
+    success: function(response) {
+      if (response.error === '') {
+        let customersHtml = '';
+        response.data.forEach(customer => {
+          customersHtml += `
+            <tr>
+              <td>${customer.id}</td>
+              <td><a href="#" class="edit-customer" data-id="${customer.id}">${customer.first_name} ${customer.last_name}</a></td>
+              <td>${customer.company_name}</td>
+              <td>${customer.phone1}</td>
+              <td>${customer.email1}</td>
+              <td>${customer.city}</td>
+              <td>${customer.assigned_team_name}</td>
+              <td>${customer.date_created}</td>
+              <td>
+                <div class="form-group">
+                  <div class="custom-control custom-switch custom-switch-on-success">
+                    <input type="checkbox" class="custom-control-input customer-status" id="customSwitch${customer.id}" data-id="${customer.id}" ${customer.status == 1 ? 'checked' : ''}>
+                    <label class="custom-control-label" for="customSwitch${customer.id}"></label>
+                  </div>
+                </div>
+              </td>
+            </tr>`;
+        });
+
+        // Destruir DataTable existente si ya está inicializada
+        if ($.fn.DataTable.isDataTable('#customers-table')) {
+          $('#customers-table').DataTable().destroy();
+        }
+
+        // Actualizar la tabla con los nuevos datos
+        $('#customers-table tbody').html(customersHtml);
+
+        // Re-inicializar DataTable
+        $('#customers-table').DataTable({
+          "searching": true,
+          "paging": true,
+          "info": true
+        });
+
+        // Agregar event listener para cuando el switch cambie
+        $('.customer-status').on('change', function() {
+          let customerId = $(this).data('id');
+          let newStatus = $(this).is(':checked') ? 1 : 0;
+          updateCustomerStatus(customerId, newStatus);
+        });
+
+        // Agregar event listener para cuando se haga clic en el nombre del cliente
+        $('.edit-customer').on('click', function(e) {
+          e.preventDefault();
+          let customerId = $(this).data('id');
+          get_customer_info(customerId);
+        });
+      } else {
+        alert(response.error);
+      }
+    }
+  });
+}
+
+// Función para limpiar el formulario de cliente
+function clear_customer_form() {
+  $('#customer-firstname-txt').val('');
+  $('#customer-lastname-txt').val('');
+  $('#customer-company-select').val('').trigger('change');
+  $('#customer-phone1-txt').val('');
+  $('#customer-ismobile1-switch').prop('checked', false);
+  $('#customer-email1-txt').val('');
+  $('#customer-phone2-txt').val('');
+  $('#customer-ismobile2-switch').prop('checked', false);
+  $('#customer-email2-txt').val('');
+  $('#customer-address1-txt').val('');
+  $('#customer-address2-txt').val('');
+  $('#customer-city-txt').val('');
+  $('#customer-state-txt').val('');
+  $('#customer-zip-txt').val('');
+  $('#customer-country-txt').val('');
+  $('#customer-referral-select').val('').trigger('change');
+  $('#customer-user-select').val('').trigger('change');
+  $('#customer-team-select').val('').trigger('change');
+  // Limpiar el Summernote correctamente
+  $('#customer-additional-info-txt').summernote('code', '');
+  $('#btn-save-customer').data('customer-id', '');
+}
+
+// Función para guardar un nuevo cliente o actualizar uno existente
+function customer_save_button() {
+  let customerData = {
+    first_name: $('#customer-firstname-txt').val(),
+    last_name: $('#customer-lastname-txt').val(),
+    company_id: $('#customer-company-select').val(),
+    phone1: $('#customer-phone1-txt').val(),
+    is_mobile1: $('#customer-ismobile1-switch').is(':checked') ? 1 : 0,
+    email1: $('#customer-email1-txt').val(),
+    phone2: $('#customer-phone2-txt').val(),
+    is_mobile2: $('#customer-ismobile2-switch').is(':checked') ? 1 : 0,
+    email2: $('#customer-email2-txt').val(),
+    address1: $('#customer-address1-txt').val(),
+    address2: $('#customer-address2-txt').val(),
+    city: $('#customer-city-txt').val(),
+    state: $('#customer-state-txt').val(),
+    zip: $('#customer-zip-txt').val(),
+    country: $('#customer-country-txt').val(),
+    referral_source_id: $('#customer-referral-select').val(),
+    assigned_user_id: $('#customer-user-select').val(),
+    assigned_team_id: $('#customer-team-select').val(),
+    additional_info: $('#customer-additional-info-txt').summernote('code')
+  };
+
+  let customerId = $('#btn-save-customer').data('customer-id');
+
+  $.ajax({
+    type: "POST",
+    url: "../dist/php/services.php",
+    data: {
+      option: 'save_customer',
+      customer_data: JSON.stringify(customerData),
+      customer_id: customerId || ''
+    },
+    dataType: "json",
+    success: function(response) {
+      if (response.error === '') {
+        alert(response.message);
+        load_customers(); // Recargar la lista de clientes
+        clear_customer_form(); // Limpiar el formulario
+      } else {
+        alert(response.error);
+      }
+    }
+  });
+}
+
+// Función para obtener la información de un cliente
+function get_customer_info(customerId) {
+  $.ajax({
+    type: "POST",
+    url: "../dist/php/services.php",
+    data: {
+      option: 'get_customer_info',
+      customer_id: customerId
+    },
+    dataType: "json",
+    success: function(response) {
+      if (response.error === '') {
+        let customer = response.data;
+        $('#customer-firstname-txt').val(customer.first_name);
+        $('#customer-lastname-txt').val(customer.last_name);
+        $('#customer-company-select').val(customer.company_id).trigger('change');
+        $('#customer-phone1-txt').val(customer.phone1);
+        $('#customer-ismobile1-switch').prop('checked', customer.is_mobile1 == 1);
+        $('#customer-email1-txt').val(customer.email1);
+        $('#customer-phone2-txt').val(customer.phone2);
+        $('#customer-ismobile2-switch').prop('checked', customer.is_mobile2 == 1);
+        $('#customer-email2-txt').val(customer.email2);
+        $('#customer-address1-txt').val(customer.address1);
+        $('#customer-address2-txt').val(customer.address2);
+        $('#customer-city-txt').val(customer.city);
+        $('#customer-state-txt').val(customer.state);
+        $('#customer-zip-txt').val(customer.zip);
+        $('#customer-country-txt').val(customer.country);
+        $('#customer-referral-select').val(customer.referral_source_id).trigger('change');
+        $('#customer-user-select').val(customer.assigned_user_id).trigger('change');
+        $('#customer-team-select').val(customer.assigned_team_id).trigger('change');
+        // Establecer contenido en Summernote
+        $('#customer-additional-info-txt').summernote('code', customer.additional_info);
+
+        $('#btn-save-customer').data('customer-id', customer.id);
+      } else {
+        alert(response.error);
+      }
+    }
+  });
 }
 
 // Función para guardar/actualizar team
