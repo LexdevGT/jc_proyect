@@ -74,6 +74,17 @@ $(function(){
     window.location.replace("new_order2.html");
   });
   //--FINISH button Next from new_order1.html
+
+  // Event listener for role change
+    $('#role-select').on('change', function() {
+      load_role_permissions($(this).val());
+    });
+
+    // Event listener for save button on m_permissions.html
+    $('#save-permissions').click(function() {
+      save_permissions();
+    });
+
 });
 
 function new_function(){
@@ -105,6 +116,166 @@ function new_function(){
       }    
     });
   }
+}
+
+// Functions for permissions management in core.js
+
+function load_roles_for_permissions() {
+   $.ajax({
+       type: "POST",
+       url: "../dist/php/services.php",
+       data: { option: 'load_roles_for_permissions' },
+       dataType: "json",
+       success: function(response) {
+           if (response.error === '') {
+               let html = '<option value="" selected disabled>Select a role</option>';
+               response.data.forEach(role => {
+                   html += `<option value="${role.id}">${role.name}</option>`;
+               });
+               $('#role-select').html(html);
+           } else {
+               alert(response.error);
+           }
+       }
+   });
+}
+
+function load_role_permissions(roleId) {
+    if (!roleId) return;
+    
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'load_role_permissions',
+            role_id: roleId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                console.log('Loaded permissions:', response.data.permissions); // Debug
+                renderPermissionsGrid(response.data.menu_items, response.data.permissions);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function renderPermissionsGrid(menuItems, currentPermissions) {
+    let html = '';
+    
+    // Convertir currentPermissions a un array de números si no lo es ya
+    const permissionIds = currentPermissions.map(p => parseInt(p));
+    
+    // Group menu items by parent
+    const menuGroups = menuItems.reduce((acc, item) => {
+        if (!item.parent_id) {
+            if (!acc.parents) acc.parents = [];
+            acc.parents.push(item);
+        } else {
+            if (!acc.children) acc.children = {};
+            if (!acc.children[item.parent_id]) acc.children[item.parent_id] = [];
+            acc.children[item.parent_id].push(item);
+        }
+        return acc;
+    }, {});
+
+    // Render parent menu items
+    menuGroups.parents?.forEach(parent => {
+        html += createMenuItemCard(parent, permissionIds);
+        
+        // Render children if any
+        if (menuGroups.children?.[parent.id]) {
+            html += '<div class="col-12"><div class="ml-4">';
+            menuGroups.children[parent.id].forEach(child => {
+                html += createMenuItemCard(child, permissionIds);
+            });
+            html += '</div></div>';
+        }
+    });
+
+    $('#permissions-grid').html(html);
+
+    // Re-initialize switches after rendering
+    initializeSwitches(permissionIds);
+}
+
+function createMenuItemCard(menuItem, permissionIds) {
+    const isPermitted = permissionIds.includes(parseInt(menuItem.id));
+    return `
+        <div class="col-md-12 mb-2">
+            <div class="card menu-item-card ${isPermitted ? 'active' : ''}">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="${menuItem.icon}"></i>
+                            <span class="ml-2">${menuItem.name}</span>
+                        </div>
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input permission-switch" 
+                                   id="switch${menuItem.id}" 
+                                   data-menu-id="${menuItem.id}"
+                                   ${isPermitted ? 'checked' : ''}>
+                            <label class="custom-control-label" for="switch${menuItem.id}"></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function initializeSwitches(permissionIds) {
+    // Reinicializar todos los switches
+    $('.permission-switch').each(function() {
+        const menuId = parseInt($(this).data('menu-id'));
+        $(this).prop('checked', permissionIds.includes(menuId));
+    });
+
+    // Agregar eventos a los switches
+    $('.permission-switch').off('change').on('change', function() {
+        const menuId = $(this).data('menu-id');
+        const isChecked = $(this).is(':checked');
+        toggleChildPermissions(menuId, isChecked);
+    });
+}
+
+function toggleChildPermissions(parentId, state) {
+   // Find and toggle all child menu items
+   $(`.permission-switch[data-parent="${parentId}"]`).prop('checked', state);
+}
+
+function save_permissions() {
+   const roleId = $('#role-select').val();
+   if (!roleId) {
+       alert('Please select a role first');
+       return;
+   }
+
+   const permissions = [];
+   $('.permission-switch:checked').each(function() {
+       permissions.push($(this).data('menu-id'));
+   });
+
+   $.ajax({
+       type: "POST",
+       url: "../dist/php/services.php",
+       data: {
+           option: 'save_permissions',
+           role_id: roleId,
+           permissions: JSON.stringify(permissions)
+       },
+       dataType: "json",
+       success: function(response) {
+           if (response.error === '') {
+               alert(response.message);
+               load_role_permissions(roleId);
+           } else {
+               alert(response.error);
+           }
+       }
+   });
 }
 
 function updateCustomerStatus(customerId, newStatus) {
