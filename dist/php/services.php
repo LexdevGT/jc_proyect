@@ -129,6 +129,15 @@
 			case 'get_customer_info':
 		        getCustomerInfoFunction();
 		        break;
+	     	case 'load_roles_for_permissions':
+			   loadRolesForPermissionsFunction();
+			   break;
+			case 'load_role_permissions':
+			   loadRolePermissionsFunction(); 
+			   break;
+			case 'save_permissions':
+			   savePermissionsFunction();
+			   break;
 		}
 	}
 
@@ -152,6 +161,124 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function loadRolesForPermissionsFunction() {
+	   global $conn;
+	   $jsondata = ['error' => '', 'data' => []];
+	   
+	   $query = "SELECT id_roles as id, name FROM roles WHERE status = 1 ORDER BY name";
+	   $result = $conn->query($query);
+	   
+	   if ($result) {
+	       while ($row = $result->fetch_assoc()) {
+	           $jsondata['data'][] = $row;
+	       }
+	   } else {
+	       $jsondata['error'] = 'Error loading roles';
+	   }
+	   
+	   echo json_encode($jsondata);
+	}
+
+	function loadRolePermissionsFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+	    
+	    $roleId = $_POST['role_id'];
+	    
+	    try {
+	        // Get all menu items
+	        $menuQuery = "SELECT id, name, icon, url, parent_id, order_position 
+	                     FROM menu_items 
+	                     WHERE status = 1 
+	                     ORDER BY COALESCE(parent_id, id), order_position";
+	        $result = $conn->query($menuQuery);
+	        if (!$result) {
+	            throw new Exception("Error loading menu items: " . $conn->error);
+	        }
+	        
+	        $menuItems = [];
+	        while ($row = $result->fetch_assoc()) {
+	            $menuItems[] = [
+	                'id' => (int)$row['id'],
+	                'name' => $row['name'],
+	                'icon' => $row['icon'],
+	                'url' => $row['url'],
+	                'parent_id' => $row['parent_id'] ? (int)$row['parent_id'] : null,
+	                'order_position' => (int)$row['order_position']
+	            ];
+	        }
+	        
+	        // Get current permissions
+	        $permissionQuery = "SELECT menu_item_id 
+	                           FROM role_permissions 
+	                           WHERE role_id = ?";
+	        
+	        $stmt = $conn->prepare($permissionQuery);
+	        $stmt->bind_param("i", $roleId);
+	        if (!$stmt->execute()) {
+	            throw new Exception("Error loading permissions: " . $conn->error);
+	        }
+	        
+	        $result = $stmt->get_result();
+	        $permissions = [];
+	        while ($row = $result->fetch_assoc()) {
+	            $permissions[] = (int)$row['menu_item_id'];
+	        }
+	        
+	        $jsondata['data'] = [
+	            'menu_items' => $menuItems,
+	            'permissions' => $permissions
+	        ];
+	        
+	    } catch (Exception $e) {
+	        $jsondata['error'] = $e->getMessage();
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function savePermissionsFunction() {
+	   global $conn;
+	   $jsondata = ['error' => '', 'message' => ''];
+	   
+	   $roleId = $_POST['role_id'];
+	   $permissions = json_decode($_POST['permissions'], true);
+	   
+	   try {
+	       $conn->begin_transaction();
+	       
+	       // Delete existing permissions
+	       $deleteQuery = "DELETE FROM role_permissions WHERE role_id = ?";
+	       $stmt = $conn->prepare($deleteQuery);
+	       $stmt->bind_param("i", $roleId);
+	       if (!$stmt->execute()) {
+	           throw new Exception("Error deleting existing permissions");
+	       }
+	       
+	       // Insert new permissions
+	       if (!empty($permissions)) {
+	           $insertQuery = "INSERT INTO role_permissions (role_id, menu_item_id) VALUES (?, ?)";
+	           $stmt = $conn->prepare($insertQuery);
+	           
+	           foreach ($permissions as $menuId) {
+	               $stmt->bind_param("ii", $roleId, $menuId);
+	               if (!$stmt->execute()) {
+	                   throw new Exception("Error inserting permission");
+	               }
+	           }
+	       }
+	       
+	       $conn->commit();
+	       $jsondata['message'] = 'Permissions saved successfully!';
+	       
+	   } catch (Exception $e) {
+	       $conn->rollback();
+	       $jsondata['error'] = $e->getMessage();
+	   }
+	   
+	   echo json_encode($jsondata);
 	}
 
 	function loadTeamsSelectFunction() {
