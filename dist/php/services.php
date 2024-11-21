@@ -2,12 +2,54 @@
 //error_log('Reconoce PHP');
 	session_start();
 	date_default_timezone_set('America/Guatemala');
-	
+	header('Content-Type: application/json');
+
+	function checkSession() {
+	    // Rutas que no requieren autenticación
+	    $publicRoutes = ['sign_in', 'connect'];
+	    
+	    // Si es una ruta pública, permitir el acceso
+	    if (isset($_POST['option']) && in_array($_POST['option'], $publicRoutes)) {
+	        return true;
+	    }
+	    
+	    // Verificar si el usuario está autenticado
+	    if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
+	        echo json_encode([
+	            'error' => 'Session expired or not authenticated',
+	            'redirect' => 'index.html'
+	        ]);
+	        exit;
+	    }
+	    
+	    // Verificar tiempo de inactividad (opcional)
+	    $inactivityTimeout = 30 * 60; // 30 minutos
+	    if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time'] > $inactivityTimeout)) {
+	        session_destroy();
+	        echo json_encode([
+	            'error' => 'Session expired',
+	            'redirect' => 'index.html'
+	        ]);
+	        exit;
+	    }
+	    
+	    // Actualizar tiempo de última actividad
+	    $_SESSION['login_time'] = time();
+	    
+	    return true;
+	}
+
+	// Evitar cualquier salida antes de la respuesta JSON
+	ob_start();
+
 	require_once('connect.php');
 
 	if(isset($_POST['option'])){
 		$option = $_POST['option'];
-	
+		
+		// Verificar sesión
+    	checkSession();
+		
 		switch ($option) {
 			case 'connect':
 				connectFunction();
@@ -15,6 +57,9 @@
 			case 'sign_in':
 				signInFunction();
 				break;
+			case 'logout':
+			    logoutFunction();
+			    break;
 			case 'load_roles':
 				loadRoleFunction();
 				break;
@@ -60,6 +105,15 @@
 		    case 'load_teams_select':
 		        loadTeamsSelectFunction();
 		        break;
+		    case 'load_roles_for_permissions':
+			   loadRolesForPermissionsFunction();
+			   break;
+			case 'load_role_permissions':
+			   loadRolePermissionsFunction(); 
+			   break;
+			case 'load_sidebar':
+				loadSidebarFunction();
+			    break;
 			case 'update_role_status':
 				updateRoleStatusFunction();
 				break;
@@ -87,6 +141,9 @@
 			case 'save_customer':
 		        saveCustomerFunction();
 		        break;
+		    case 'save_permissions':
+			   savePermissionsFunction();
+			   break;
 			case 'update_user':
 				updateUserFunction();
 				break;	
@@ -129,15 +186,18 @@
 			case 'get_customer_info':
 		        getCustomerInfoFunction();
 		        break;
-	     	case 'load_roles_for_permissions':
-			   loadRolesForPermissionsFunction();
-			   break;
-			case 'load_role_permissions':
-			   loadRolePermissionsFunction(); 
-			   break;
-			case 'save_permissions':
-			   savePermissionsFunction();
-			   break;
+		    case 'load_vehicles':
+			    loadVehiclesFunction();
+			    break;
+			case 'get_vehicle_info':
+			    getVehicleInfoFunction();
+			    break;
+			case 'update_vehicle_status':
+			    updateVehicleStatusFunction();
+			    break;
+			case 'save_vehicle':
+			    saveVehicleFunction();
+			    break;
 		}
 	}
 
@@ -161,6 +221,313 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function loadVehiclesFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $query = "SELECT id, model_year, make, model, vehicle_type, vin, 
+	              DATE_FORMAT(date_created, '%d-%m-%Y') as date_created, status
+	              FROM vehicles 
+	              ORDER BY date_created DESC";
+
+	    $result = $conn->query($query);
+
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading vehicles: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function getVehicleInfoFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+
+	    $vehicleId = $_POST['vehicle_id'];
+	    
+	    $query = "SELECT * FROM vehicles WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $vehicleId);
+
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching vehicle data: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function updateVehicleStatusFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    $vehicleId = $_POST['vehicle_id'];
+	    $status = $_POST['status'];
+
+	    $query = "UPDATE vehicles SET status = ? WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("ii", $status, $vehicleId);
+
+	    if ($stmt->execute()) {
+	        $jsondata['message'] = 'Vehicle status updated successfully!';
+	    } else {
+	        $jsondata['error'] = 'Error updating vehicle status: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function saveVehicleFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    try {
+	        $vehicleData = json_decode($_POST['vehicle_data'], true);
+	        $vehicleId = isset($_POST['vehicle_id']) ? $_POST['vehicle_id'] : null;
+
+	        // Validar datos requeridos
+	        if (empty($vehicleData['model_year']) || empty($vehicleData['make']) || empty($vehicleData['model'])) {
+	            throw new Exception("Required fields are missing");
+	        }
+
+	        if ($vehicleId) {
+	            // Update existing vehicle
+	            $query = "UPDATE vehicles SET 
+	                    model_year = ?,
+	                    make = ?,
+	                    model = ?,
+	                    vehicle_type = ?,
+	                    is_inop = ?,
+	                    notes = ?,
+	                    carrier_fee = ?,
+	                    broker_fee = ?,
+	                    vehicle_tariff = ?,
+	                    vin = ?,
+	                    plate_number = ?,
+	                    lot_number = ?,
+	                    color = ?,
+	                    weight = ?,
+	                    weight_measure = ?,
+	                    mods = ?,
+	                    vehicle_length = ?,
+	                    vehicle_width = ?,
+	                    vehicle_height = ?,
+	                    add_on = ?
+	                    WHERE id = ?";
+
+	            $stmt = $conn->prepare($query);
+	            if (!$stmt) {
+	                throw new Exception("Error preparing update query: " . $conn->error);
+	            }
+
+	            // Convertir valores vacíos a NULL o valores por defecto
+	            $modelYear = $vehicleData['model_year'] ?: null;
+	            $make = $vehicleData['make'] ?: '';
+	            $model = $vehicleData['model'] ?: '';
+	            $vehicleType = $vehicleData['vehicle_type'] ?: '';
+	            $isInop = (int)$vehicleData['is_inop'];
+	            $notes = $vehicleData['notes'] ?: '';
+	            $carrierFee = $vehicleData['carrier_fee'] ?: 0.00;
+	            $brokerFee = $vehicleData['broker_fee'] ?: 0.00;
+	            $vehicleTariff = $vehicleData['vehicle_tariff'] ?: 0.00;
+	            $vin = $vehicleData['vin'] ?: '';
+	            $plateNumber = $vehicleData['plate_number'] ?: '';
+	            $lotNumber = $vehicleData['lot_number'] ?: '';
+	            $color = $vehicleData['color'] ?: '';
+	            $weight = $vehicleData['weight'] ?: 0.00;
+	            $weightMeasure = $vehicleData['weight_measure'] ?: 'lbs';
+	            $mods = $vehicleData['mods'] ?: '';
+	            $length = $vehicleData['vehicle_length'] ?: 0.00;
+	            $width = $vehicleData['vehicle_width'] ?: 0.00;
+	            $height = $vehicleData['vehicle_height'] ?: 0.00;
+	            $addOn = $vehicleData['add_on'] ?: '';
+
+	            $stmt->bind_param(
+	                "isssisdddssssdssdddsi",
+	                $modelYear,
+	                $make,
+	                $model,
+	                $vehicleType,
+	                $isInop,
+	                $notes,
+	                $carrierFee,
+	                $brokerFee,
+	                $vehicleTariff,
+	                $vin,
+	                $plateNumber,
+	                $lotNumber,
+	                $color,
+	                $weight,
+	                $weightMeasure,
+	                $mods,
+	                $length,
+	                $width,
+	                $height,
+	                $addOn,
+	                $vehicleId
+	            );
+	            
+	            $message = 'Vehicle updated successfully!';
+	        } else {
+	            // Insert new vehicle
+	            $query = "INSERT INTO vehicles (
+	                    model_year, make, model, vehicle_type, is_inop, notes,
+	                    carrier_fee, broker_fee, vehicle_tariff, vin, plate_number,
+	                    lot_number, color, weight, weight_measure, mods,
+	                    vehicle_length, vehicle_width, vehicle_height, add_on, status
+	                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
+
+	            $stmt = $conn->prepare($query);
+	            if (!$stmt) {
+	                throw new Exception("Error preparing insert query: " . $conn->error);
+	            }
+
+	            // Convertir valores vacíos a NULL o valores por defecto
+	            $modelYear = $vehicleData['model_year'] ?: null;
+	            $make = $vehicleData['make'] ?: '';
+	            $model = $vehicleData['model'] ?: '';
+	            $vehicleType = $vehicleData['vehicle_type'] ?: '';
+	            $isInop = (int)$vehicleData['is_inop'];
+	            $notes = $vehicleData['notes'] ?: '';
+	            $carrierFee = $vehicleData['carrier_fee'] ?: 0.00;
+	            $brokerFee = $vehicleData['broker_fee'] ?: 0.00;
+	            $vehicleTariff = $vehicleData['vehicle_tariff'] ?: 0.00;
+	            $vin = $vehicleData['vin'] ?: '';
+	            $plateNumber = $vehicleData['plate_number'] ?: '';
+	            $lotNumber = $vehicleData['lot_number'] ?: '';
+	            $color = $vehicleData['color'] ?: '';
+	            $weight = $vehicleData['weight'] ?: 0.00;
+	            $weightMeasure = $vehicleData['weight_measure'] ?: 'lbs';
+	            $mods = $vehicleData['mods'] ?: '';
+	            $length = $vehicleData['vehicle_length'] ?: 0.00;
+	            $width = $vehicleData['vehicle_width'] ?: 0.00;
+	            $height = $vehicleData['vehicle_height'] ?: 0.00;
+	            $addOn = $vehicleData['add_on'] ?: '';
+
+	            $stmt->bind_param(
+	                "isssisdddssssdssdddss",
+	                $modelYear,
+	                $make,
+	                $model,
+	                $vehicleType,
+	                $isInop,
+	                $notes,
+	                $carrierFee,
+	                $brokerFee,
+	                $vehicleTariff,
+	                $vin,
+	                $plateNumber,
+	                $lotNumber,
+	                $color,
+	                $weight,
+	                $weightMeasure,
+	                $mods,
+	                $length,
+	                $width,
+	                $height,
+	                $addOn
+	            );
+	            
+	            $message = 'Vehicle saved successfully!';
+	        }
+
+	        if (!$stmt->execute()) {
+	            throw new Exception("Error executing query: " . $stmt->error);
+	        }
+
+	        $jsondata['message'] = $message;
+
+	    } catch (Exception $e) {
+	        $jsondata['error'] = 'Error saving vehicle: ' . $e->getMessage();
+	        error_log("Error in saveVehicleFunction: " . $e->getMessage());
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function loadSidebarFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+	    
+	    if (!isset($_SESSION['user_id'])) {
+	        $jsondata['error'] = 'User session not found';
+	        echo json_encode($jsondata);
+	        return;
+	    }
+	    
+	    try {
+	        $roleId = $_SESSION['user_role'];
+	        
+	        $menuQuery = "SELECT DISTINCT m.*, 
+	                     (SELECT COUNT(*) FROM menu_items mi WHERE mi.parent_id = m.id AND mi.status = 1) as child_count
+	                     FROM menu_items m 
+	                     INNER JOIN role_permissions rp ON m.id = rp.menu_item_id 
+	                     WHERE rp.role_id = ? AND m.status = 1 
+	                     ORDER BY COALESCE(m.parent_id, m.id), m.order_position";
+	        
+	        $stmt = $conn->prepare($menuQuery);
+	        if (!$stmt) {
+	            throw new Exception("Error preparing menu query: " . $conn->error);
+	        }
+	        
+	        $stmt->bind_param("i", $roleId);
+	        if (!$stmt->execute()) {
+	            throw new Exception("Error executing menu query: " . $stmt->error);
+	        }
+	        
+	        $result = $stmt->get_result();
+	        
+	        $menuItems = [];
+	        while ($row = $result->fetch_assoc()) {
+	            // Procesar la URL según el tipo de enlace
+	            $url = $row['url'];
+	            if ($url) {
+	                // Si es el dashboard, mantener la URL tal cual
+	                if ($url === 'dashboard.html') {
+	                    $row['url'] = $url;
+	                }
+	                // Si es una URL externa, mantenerla tal cual
+	                else if (preg_match('/^https?:\/\//', $url)) {
+	                    $row['url'] = $url;
+	                }
+	                // Para el resto de URLs internas, asegurarnos de que no tengan 'pages/' al inicio
+	                else {
+	                    $row['url'] = ltrim($url, '/');
+	                    if (strpos($row['url'], 'pages/') === 0) {
+	                        $row['url'] = substr($row['url'], 6);
+	                    }
+	                }
+	            }
+	            
+	            $menuItems[] = [
+	                'id' => (int)$row['id'],
+	                'name' => $row['name'],
+	                'icon' => $row['icon'],
+	                'url' => $row['url'],
+	                'parent_id' => $row['parent_id'] ? (int)$row['parent_id'] : null,
+	                'order_position' => (int)$row['order_position'],
+	                'child_count' => (int)$row['child_count']
+	            ];
+	        }
+	        
+	        $jsondata['data'] = $menuItems;
+	        
+	    } catch (Exception $e) {
+	        $jsondata['error'] = $e->getMessage();
+	        error_log("Error in loadSidebarFunction: " . $e->getMessage());
+	    }
+	    
+	    header('Content-Type: application/json');
+	    echo json_encode($jsondata);
+	    exit;
 	}
 
 	function loadRolesForPermissionsFunction() {
@@ -1459,49 +1826,103 @@
 	    echo json_encode($jsondata);
 	}
 
-	function signInFunction(){
-		global $conn;
-		$jsondata  	= array();
-		$error 	   	= '';
-		$message   	= '';
-		$email 		= $_POST['email'];
-		$pass 		= $_POST['pass'];
-		$code 		= '';
-		
-		$query = "SELECT id, name, last_name, email, code 
-					FROM users u 
-					WHERE email = '$email'
-		";
+	function logoutFunction() {
+	    session_destroy();
+	    $jsondata = [
+	        'error' => '',
+	        'message' => 'Logged out successfully'
+	    ];
+	    echo json_encode($jsondata);
+	}
 
-		//$hashed_password = password_hash('1234', PASSWORD_DEFAULT);
-//error_log($hashed_password);
+	function signInFunction() {
+	    global $conn;
+	    $jsondata = array();
+	    $error = '';
+	    $message = '';
+	    $email = $_POST['email'];
+	    $pass = $_POST['pass'];
+	    $code = '';
 
-		$execute_query = $conn->query($query);
+	    try {
+	        // Preparar la consulta para evitar inyección SQL
+	        $query = "SELECT id, name, last_name, email, code, role, status 
+	                 FROM users u 
+	                 WHERE email = ?";
+	                 
+	        $stmt = $conn->prepare($query);
+	        $stmt->bind_param("s", $email);
+	        $stmt->execute();
+	        $result = $stmt->get_result();
 
-		if($execute_query){
-			
-			while($row = $execute_query->fetch_array()){
-				$id 		= $row['id'];
-				$name 		= $row['name'];
-				$last_name 	= $row['last_name'];
-				$email 		= $row['email'];
-				$code 		= $row['code'];	
-		
-			}
+	        if ($result && $row = $result->fetch_assoc()) {
+	            if ($row['status'] != 1) {
+	                throw new Exception('User account is inactive.');
+	            }
 
-			if (password_verify($pass, $code)) {
-			    $message = "Welcome $name $last_name";
-			} else {
-			    $error = 'Wrong password or user!';
-			}
-			
-		}else{
-			$error = 'Error: '.$conn->error;
-		}
-		
-		$jsondata['message'] 	= $message;
-		$jsondata['error']   	= $error;
-		echo json_encode($jsondata);
+	            if (password_verify($pass, $row['code'])) {
+	                // Iniciar sesión
+	                //session_start();
+	                
+	                // Guardar datos importantes en la sesión
+	                $_SESSION['user_id'] = $row['id'];
+	                $_SESSION['user_name'] = $row['name'];
+	                $_SESSION['user_lastname'] = $row['last_name'];
+	                $_SESSION['user_email'] = $row['email'];
+	                $_SESSION['user_role'] = $row['role'];
+	                $_SESSION['logged_in'] = true;
+	                $_SESSION['login_time'] = time();
+
+	                // Actualizar último acceso en la base de datos (opcional)
+	                $updateQuery = "UPDATE users SET last_login = NOW() WHERE id = ?";
+	                $stmt = $conn->prepare($updateQuery);
+	                $stmt->bind_param("i", $row['id']);
+	                $stmt->execute();
+
+	                $message = "Welcome {$row['name']} {$row['last_name']}";
+	                
+	                // Obtener los permisos del usuario (opcional)
+	                $permissionsQuery = "SELECT menu_item_id 
+	                                   FROM role_permissions 
+	                                   WHERE role_id = ?";
+	                $stmt = $conn->prepare($permissionsQuery);
+	                $stmt->bind_param("i", $row['role']);
+	                $stmt->execute();
+	                $permissionsResult = $stmt->get_result();
+	                
+	                $permissions = [];
+	                while ($perm = $permissionsResult->fetch_assoc()) {
+	                    $permissions[] = $perm['menu_item_id'];
+	                }
+	                
+	                $_SESSION['user_permissions'] = $permissions;
+	                
+	            } else {
+	                throw new Exception('Wrong password or user!');
+	            }
+	        } else {
+	            throw new Exception('Wrong password or user!');
+	        }
+
+	    } catch (Exception $e) {
+	        $error = $e->getMessage();
+	    }
+
+	    $jsondata['message'] = $message;
+	    $jsondata['error'] = $error;
+	    
+	    // Si el login fue exitoso, incluir datos adicionales
+	    if (empty($error)) {
+	        $jsondata['user'] = [
+	            'id' => $_SESSION['user_id'],
+	            'name' => $_SESSION['user_name'],
+	            'lastname' => $_SESSION['user_lastname'],
+	            'email' => $_SESSION['user_email'],
+	            'role' => $_SESSION['user_role']
+	        ];
+	    }
+	    
+	    echo json_encode($jsondata);
 	}
 
 	function connectFunction($command,$table,$fields,$where = ''){

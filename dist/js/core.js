@@ -1,6 +1,10 @@
 $(function(){
 
-    load_sidebar();
+    setTimeout(
+      function(){
+        load_sidebar(2);
+      }, 
+    200);
 
     //--START new_order2.html
     $('#btn_new_order2_save').click(function(){
@@ -85,6 +89,12 @@ $(function(){
       save_permissions();
     });
 
+   
+    
+    $('#btn-save-vehicle').click(function() {
+        vehicles_save_button();
+    });
+
 });
 
 function new_function(){
@@ -116,6 +126,235 @@ function new_function(){
       }    
     });
   }
+}
+
+// Función para cargar la lista de vehículos
+function load_vehicles() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { 
+            option: 'load_vehicles'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '';
+                response.data.forEach(vehicle => {
+                    const checked = vehicle.status == 1 ? 'checked' : '';
+                    html += `
+                        <tr>
+                            <td>${vehicle.id}</td>
+                            <td><a href="#" class="edit-vehicle" data-id="${vehicle.id}">${vehicle.model_year}</a></td>
+                            <td>${vehicle.make}</td>
+                            <td>${vehicle.model}</td>
+                            <td>${vehicle.vehicle_type}</td>
+                            <td>${vehicle.vin}</td>
+                            <td>${vehicle.date_created}</td>
+                            <td>
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input vehicle-status" 
+                                               id="customSwitch${vehicle.id}" data-id="${vehicle.id}" ${checked}>
+                                        <label class="custom-control-label" for="customSwitch${vehicle.id}"></label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+
+                // Destruir DataTable existente si ya está inicializada
+                if ($.fn.DataTable.isDataTable('#vehicles-table')) {
+                    $('#vehicles-table').DataTable().destroy();
+                }
+
+                $('#vehicles-table tbody').html(html);
+
+                // Re-inicializar DataTable
+                $('#vehicles-table').DataTable({
+                    "responsive": true,
+                    "lengthChange": false,
+                    "autoWidth": false
+                }).buttons().container().appendTo('#vehicles-table_wrapper .col-md-6:eq(0)');
+
+                // Agregar event listeners
+                $('.vehicle-status').on('change', function() {
+                    const id = $(this).data('id');
+                    const newStatus = $(this).is(':checked') ? 1 : 0;
+                    updateVehicleStatus(id, newStatus);
+                });
+
+                $('.edit-vehicle').on('click', function(e) {
+                    e.preventDefault();
+                    const id = $(this).data('id');
+                    getVehicleInfo(id);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Función para obtener información de un vehículo
+function getVehicleInfo(vehicleId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_vehicle_info',
+            vehicle_id: vehicleId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const vehicle = response.data;
+                
+                // Llenar el formulario con los datos
+                $('#model-year').val(vehicle.model_year);
+                $('#make').val(vehicle.make);
+                $('#model').val(vehicle.model);
+                $('#vehicle-type').val(vehicle.vehicle_type);
+                $('#is-inop').prop('checked', vehicle.is_inop == 1);
+                $('#notes').val(vehicle.notes);
+                $('#carrier-fee').val('$' + parseFloat(vehicle.carrier_fee).toFixed(2));
+                $('#broker-fee').val('$' + parseFloat(vehicle.broker_fee).toFixed(2));
+                $('#vehicle-tariff').val('$' + parseFloat(vehicle.vehicle_tariff).toFixed(2));
+                $('#vin').val(vehicle.vin);
+                $('#plate-number').val(vehicle.plate_number);
+                $('#lot-number').val(vehicle.lot_number);
+                $('#color').val(vehicle.color);
+                $('#weight').val(vehicle.weight);
+                $('#weight-measure').val(vehicle.weight_measure);
+                $('#mods').val(vehicle.mods);
+                $('#vehicle-length').val(vehicle.vehicle_length);
+                $('#vehicle-width').val(vehicle.vehicle_width);
+                $('#vehicle-height').val(vehicle.vehicle_height);
+                $('#add-on').val(vehicle.add_on);
+
+                // Guardar el ID del vehículo para la actualización
+                $('#btn-save-vehicle').data('vehicle-id', vehicleId);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Función para actualizar el estado de un vehículo
+function updateVehicleStatus(vehicleId, newStatus) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'update_vehicle_status',
+            vehicle_id: vehicleId,
+            status: newStatus
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+            } else {
+                alert(response.error);
+                // Revertir el switch si hubo error
+                $(`#customSwitch${vehicleId}`).prop('checked', !newStatus);
+            }
+        }
+    });
+}
+
+// Función para guardar o actualizar un vehículo
+function vehicles_save_button() {
+    // Obtener los valores monetarios sin el símbolo $
+    const carrierFee = $('#carrier-fee').val().replace('$', '');
+    const brokerFee = $('#broker-fee').val().replace('$', '');
+    const vehicleTariff = $('#vehicle-tariff').val().replace('$', '');
+
+    const vehicleData = {
+        model_year: $('#model-year').val(),
+        make: $('#make').val(),
+        model: $('#model').val(),
+        vehicle_type: $('#vehicle-type').val(),
+        is_inop: $('#is-inop').is(':checked') ? 1 : 0,
+        notes: $('#notes').val(),
+        carrier_fee: carrierFee,
+        broker_fee: brokerFee,
+        vehicle_tariff: vehicleTariff,
+        vin: $('#vin').val(),
+        plate_number: $('#plate-number').val(),
+        lot_number: $('#lot-number').val(),
+        color: $('#color').val(),
+        weight: $('#weight').val(),
+        weight_measure: $('#weight-measure').val(),
+        mods: $('#mods').val(),
+        vehicle_length: $('#vehicle-length').val(),
+        vehicle_width: $('#vehicle-width').val(),
+        vehicle_height: $('#vehicle-height').val(),
+        add_on: $('#add-on').val()
+    };
+
+    const vehicleId = $('#btn-save-vehicle').data('vehicle-id');
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_vehicle',
+            vehicle_data: JSON.stringify(vehicleData),
+            vehicle_id: vehicleId || ''
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                clearVehicleForm();
+                load_vehicles();
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Función para limpiar el formulario
+function clearVehicleForm() {
+    // Limpiar campos básicos
+    $('#model-year').val('');
+    $('#make').val('');
+    $('#model').val('');
+    $('#vehicle-type').val('');
+    
+    // Limpiar switch de Inop
+    $('#is-inop').prop('checked', false);
+    
+    // Limpiar notas
+    $('#notes').val('');
+    
+    // Limpiar campos monetarios
+    $('#carrier-fee').val('$0.00');
+    $('#broker-fee').val('$0.00');
+    $('#vehicle-tariff').val('$0.00');
+    
+    // Limpiar información del vehículo
+    $('#vin').val('');
+    $('#plate-number').val('');
+    $('#lot-number').val('');
+    $('#color').val('');
+    
+    // Limpiar peso y medidas
+    $('#weight').val('');
+    $('#weight-measure').val('lbs'); // Restablecer al valor por defecto
+    $('#mods').val('');
+    
+    // Limpiar dimensiones
+    $('#vehicle-length').val('');
+    $('#vehicle-width').val('');
+    $('#vehicle-height').val('');
+    $('#add-on').val('');
+    
+    // Remover el ID del vehículo almacenado para la edición
+    $('#btn-save-vehicle').removeData('vehicle-id');
 }
 
 // Functions for permissions management in core.js
@@ -153,7 +392,7 @@ function load_role_permissions(roleId) {
         dataType: "json",
         success: function(response) {
             if (response.error === '') {
-                console.log('Loaded permissions:', response.data.permissions); // Debug
+                //console.log('Loaded permissions:', response.data.permissions); // Debug
                 renderPermissionsGrid(response.data.menu_items, response.data.permissions);
             } else {
                 alert(response.error);
@@ -1707,7 +1946,7 @@ function load_select_phones(id = 0) {
   var phonesHtml = '';
   var fullName = '';
   $.ajax({
-    contentType: "application/x-www-form-urlencoded",
+    contentType: "application/x-www-form-urlencoded", 
     type: "POST",
     url: "../dist/php/services.php",
     data: {
@@ -2083,231 +2322,248 @@ function role_page_save_button(){
     }
 }
 
-function sign_in(){
-    
-    var email = $('#email').val();
-    var pass = $('#password').val();
+function logout() {
+  $.ajax({
+      type: "POST",
+      url: "dist/php/services.php",
+      data: {
+          option: 'logout'
+      },
+      dataType: "json",
+      success: function(response) {
+          localStorage.removeItem('user');
+          window.location.replace('index.html');
+      }
+  });
+}
 
-    if(email == '' || pass == ''){
+function sign_in() {
+  var email = $('#email').val();
+  var pass = $('#password').val();
+
+  if(email == '' || pass == ''){
       alert('You have to enter email and password!');
-    }else{
+  } else {
       $.ajax({
-        contentType: "application/x-www-form-urlencoded",
-        type: "POST",
-        url: "dist/php/services.php",
-        data: ({
-            option: 'sign_in',
-            email,
-            pass                   
-        }),
-        dataType: "json",        
-        success: function(r) {                                                   
-            if(r.error == ''){
-                alert(r.message);
-                window.location.replace('dashboard.html');
-            }else{
-                alert(r.error);
-                window.location.replace('index.html');
-            }
-        }    
+          contentType: "application/x-www-form-urlencoded",
+          type: "POST",
+          url: "dist/php/services.php",
+          data: {
+              option: 'sign_in',
+              email: email,
+              pass: pass
+          },
+          dataType: "json",        
+          success: function(response) {
+              if(response.error == ''){
+                  // Guardar información del usuario en localStorage si es necesario
+                  if (response.user) {
+                      localStorage.setItem('user', JSON.stringify(response.user));
+                  }
+                  
+                  alert(response.message);
+                  window.location.replace('dashboard.html');
+              } else {
+                  alert(response.error);
+                  window.location.replace('index.html');
+              }
+          },
+          error: function(xhr, status, error) {
+              alert('Error en la conexión. Por favor, intente nuevamente.');
+              console.error(error);
+          }
       });
-    }
-    
+  }
 }
 
-function load_sidebar(n=0){
-    if (n != 0) {
-        load_sidebar_dashboard()
-    }else{
-        var sidebar_html = 
-          '<li class="nav-item">'+
-            '<a href="../dashboard.html" class="nav-link">'+
-              '<i class="nav-icon fas fa-tachometer-alt"></i>'+
-              '<p>'+
-                'Dashboard'+
-              '</p>'+
-            '</a>'+
-          '</li>'+
-          '<li class="nav-item">'+
-            '<a href="new_order1.html" class="nav-link">'+
-              '<i class="nav-icon fas fa-table"></i>'+
-              '<p>'+
-                'New Order'+
-              '</p>'+
-            '</a>'+
-         ' </li>'+
-         ' <li class="nav-item">'+
-            '<a href="global_search.html" class="nav-link ">'+
-              '<i class="nav-icon fas fa-search"></i>'+
-              '<p>'+
-                'Global Search'+
-             ' </p>'+
-            '</a>'+
-          '</li>'+
-          '<li class="nav-item">'+
-            '<a href="#" class="nav-link">'+
-              '<i class="nav-icon fas fa-cog"></i>'+
-              '<p>'+
-                'Maintenance'+
-               ' <i class="fas fa-angle-left right"></i>'+
-                '<span class="badge badge-info right">5</span>'+
-              '</p>'+
-            '</a>'+
-            '<ul class="nav nav-treeview">'+
-              '<li class="nav-item">'+
-                '<a href="m_companies.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon companies"></i>'+
-                  '<p>Companies</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="m_clients.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon clients"></i>'+
-                  '<p>Clients</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="m_users.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon users"></i>'+
-                  '<p>Users</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="m_permissions.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon permissions"></i>'+
-                  '<p>Permissions</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="m_roles.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon roles"></i>'+
-                  '<p>Role</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="m_customer.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon customer"></i>'+
-                  '<p>Customers</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="m_carriers.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon carriers"></i>'+
-                  '<p>Carriers</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="m_referral_source.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon referral"></i>'+
-                  '<p>Referral Source</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="m_teams.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon teams"></i>'+
-                  '<p>Teams</p>'+
-                '</a>'+
-              '</li>'+
-            '</ul>'+
-          '</li>';
-    $("#left-nav-bar").html(sidebar_html);
-    }
+function getBasePath() {
+    const currentPath = window.location.pathname;
+    return currentPath.includes('/pages/') ? '../' : '';
 }
 
-function load_sidebar_dashboard(){
+// Función mejorada para generar URLs correctas
+function generateUrl(path) {
+    const currentPath = window.location.pathname;
+    const basePath = getBasePath();
+    
+    // Manejar casos especiales
+    if (path === 'dashboard.html') {
+        // Si estamos en /pages/ y queremos ir a dashboard
+        return currentPath.includes('/pages/') ? '../dashboard.html' : 'dashboard.html';
+    }
+    
+    // Si la URL ya incluye 'pages/' no la agregamos de nuevo
+    if (path.startsWith('pages/')) {
+        return `${basePath}${path}`;
+    }
+    
+    // Para otros casos, agregamos 'pages/' si es necesario
+    if (!path.startsWith('http') && !path.startsWith('dashboard.html')) {
+        return `${basePath}pages/${path}`;
+    }
+    
+    return `${basePath}${path}`;
+}
 
-    var sidebar_html = 
-          '<li class="nav-item">'+
-            '<a href="#" class="nav-link">'+
-              '<i class="nav-icon fas fa-tachometer-alt"></i>'+
-              '<p>'+
-                'Dashboard'+
-              '</p>'+
-            '</a>'+
-          '</li>'+
-          '<li class="nav-item">'+
-            '<a href="pages/new_order1.html" class="nav-link">'+
-              '<i class="nav-icon fas fa-table"></i>'+
-              '<p>'+
-                'New Order'+
-              '</p>'+
-            '</a>'+
-         ' </li>'+
-         ' <li class="nav-item">'+
-            '<a href="pages/global_search.html" class="nav-link ">'+
-              '<i class="nav-icon fas fa-search"></i>'+
-              '<p>'+
-                'Global Search'+
-             ' </p>'+
-            '</a>'+
-          '</li>'+
-          '<li class="nav-item">'+
-            '<a href="#" class="nav-link">'+
-              '<i class="nav-icon fas fa-cog"></i>'+
-              '<p>'+
-                'Maintenance'+
-               ' <i class="fas fa-angle-left right"></i>'+
-                '<span class="badge badge-info right">5</span>'+
-              '</p>'+
-            '</a>'+
-            '<ul class="nav nav-treeview">'+
-              '<li class="nav-item">'+
-                '<a href="pages/m_companies.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon companies"></i>'+
-                  '<p>Companies</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="pages/m_clients.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon clients"></i>'+
-                  '<p>Clients</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="pages/m_users.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon users"></i>'+
-                  '<p>Users</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="pages/m_permissions.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon permissions"></i>'+
-                  '<p>Permissions</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="pages/m_roles.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon roles"></i>'+
-                  '<p>Role</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="pages/m_customer.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon customer"></i>'+
-                  '<p>Customers</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="pages/m_carriers.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon carriers"></i>'+
-                  '<p>Carriers</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="pages/m_referral_source.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon referral"></i>'+
-                  '<p>Referral Source</p>'+
-                '</a>'+
-              '</li>'+
-              '<li class="nav-item">'+
-                '<a href="pages/m_teams.html" class="nav-link">'+
-                  '<i class="far fa-circle nav-icon teams"></i>'+
-                  '<p>Teams</p>'+
-                '</a>'+
-              '</li>'+
-            '</ul>'+
-          '</li>';
-    $("#left-nav-bar").html(sidebar_html);
+function load_sidebar(n = 0) {
+    const basePath = getBasePath();
+    const baseUrl = `${basePath}dist/php/services.php`;
     
+    console.log('Current path:', window.location.pathname);
+    console.log('Base path:', basePath);
+    console.log('Loading sidebar from:', baseUrl);
     
+    $.ajax({
+        type: "POST",
+        url: baseUrl,
+        data: { 
+            option: 'load_sidebar'
+        },
+        dataType: "json",
+        beforeSend: function() {
+            $("#left-nav-bar").html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading menu...</div>');
+        },
+        success: function(response) {
+            console.log('Sidebar response:', response);
+            
+            if (response.error === 'User session not found') {
+                handleSessionRedirect();
+                return;
+            }
+            
+            if (response.error) {
+                console.error('Error loading sidebar:', response.error);
+                $("#left-nav-bar").html(`<div class="text-danger">Error: ${response.error}</div>`);
+                return;
+            }
+            
+            if (response.data && Array.isArray(response.data)) {
+                const sidebarHtml = generateSidebarHtml(response.data);
+                $("#left-nav-bar").html(sidebarHtml);
+                initializeSidebarComponents();
+            } else {
+                console.error('Invalid sidebar data:', response);
+                $("#left-nav-bar").html('<div class="text-danger">Error loading menu structure</div>');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Ajax error:', {
+                status: status,
+                error: error,
+                responseText: xhr.responseText,
+                statusCode: xhr.status
+            });
+            
+            if (xhr.status === 401 || xhr.status === 403) {
+                handleSessionRedirect();
+            }
+        }
+    });
+}
+
+function handleSessionRedirect() {
+    const basePath = getBasePath();
+    window.location.href = `${basePath}index.html`;
+}
+
+function generateSidebarHtml(menuItems) {
+    if (!menuItems || !Array.isArray(menuItems)) {
+        console.error('Invalid menu items:', menuItems);
+        return '';
+    }
+    
+    // Agrupar items por padre
+    const menuGroups = menuItems.reduce((acc, item) => {
+        if (!item.parent_id) {
+            if (!acc.parents) acc.parents = [];
+            acc.parents.push(item);
+        } else {
+            if (!acc.children) acc.children = {};
+            if (!acc.children[item.parent_id]) acc.children[item.parent_id] = [];
+            acc.children[item.parent_id].push(item);
+        }
+        return acc;
+    }, {});
+
+    let html = '';
+    
+    menuGroups.parents?.sort((a, b) => a.order_position - b.order_position)
+        .forEach(parent => {
+            // Generar URL correcta para el elemento padre
+            const url = parent.url ? generateUrl(parent.url) : '#';
+            
+            if (menuGroups.children?.[parent.id]) {
+                // Menú con submenús
+                html += `
+                    <li class="nav-item">
+                        <a href="${url}" class="nav-link">
+                            <i class="nav-icon ${parent.icon}"></i>
+                            <p>
+                                ${parent.name}
+                                <i class="fas fa-angle-left right"></i>
+                                ${menuGroups.children[parent.id].length > 0 ? 
+                                    `<span class="badge badge-info right">${menuGroups.children[parent.id].length}</span>` : 
+                                    ''}
+                            </p>
+                        </a>
+                        <ul class="nav nav-treeview">
+                            ${menuGroups.children[parent.id]
+                                .sort((a, b) => a.order_position - b.order_position)
+                                .map(child => {
+                                    // Generar URL correcta para cada elemento hijo
+                                    const childUrl = generateUrl(child.url);
+                                    return `
+                                        <li class="nav-item">
+                                            <a href="${childUrl}" class="nav-link">
+                                                <i class="${child.icon}"></i>
+                                                <p>${child.name}</p>
+                                            </a>
+                                        </li>
+                                    `;
+                                }).join('')}
+                        </ul>
+                    </li>
+                `;
+            } else {
+                // Menú sin submenús
+                html += `
+                    <li class="nav-item">
+                        <a href="${url}" class="nav-link">
+                            <i class="nav-icon ${parent.icon}"></i>
+                            <p>${parent.name}</p>
+                        </a>
+                    </li>
+                `;
+            }
+        });
+    
+    return html;
+}
+
+function initializeSidebarComponents() {
+    // Marcar el elemento activo basado en la URL actual
+    const currentPath = window.location.pathname;
+    const currentFile = currentPath.split('/').pop();
+    
+    $('.nav-link').each(function() {
+        const href = $(this).attr('href');
+        if (href) {
+            // Normalizar las rutas para la comparación
+            const normalizedHref = href.replace('../', '').replace('pages/', '');
+            const normalizedCurrent = currentFile;
+            
+            if (normalizedHref.endsWith(normalizedCurrent) || 
+                currentPath.endsWith(normalizedHref) ||
+                (currentFile === 'dashboard.html' && href.endsWith('dashboard.html'))) {
+                $(this).addClass('active');
+                $(this).parents('.nav-item').addClass('menu-open');
+                $(this).parents('.nav-treeview').prev().addClass('active');
+            }
+        }
+    });
+}
+
+function load_sidebar_dashboard() {
+    // Usar la misma función pero con una ruta diferente para los archivos
+    load_sidebar(1);
 }
