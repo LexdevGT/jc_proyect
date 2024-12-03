@@ -4,7 +4,7 @@ $(function(){
       function(){
         load_sidebar(2);
       }, 
-    200);
+    150);
 
     //--START new_order2.html
     $('#btn_new_order2_save').click(function(){
@@ -89,10 +89,18 @@ $(function(){
       save_permissions();
     });
 
-   
     
     $('#btn-save-vehicle').click(function() {
         vehicles_save_button();
+    });
+
+    // Event listener para el botón de guardar
+    $('#btn-save-interested-carrier').click(function() {
+        interested_carrier_save_button();
+    });
+
+    $('#btn-save-driver').click(function() {
+        drivers_save_button();
     });
 
 });
@@ -126,6 +134,474 @@ function new_function(){
       }    
     });
   }
+}
+
+// Function to load drivers list
+function load_drivers() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { option: 'load_drivers' },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '';
+                response.data.forEach(driver => {
+                    const checked = driver.status == 1 ? 'checked' : '';
+                    html += `
+                        <tr>
+                            <td>${driver.id}</td>
+                            <td><a href="#" class="edit" data-id="${driver.id}">${driver.name}</a></td>
+                            <td>${driver.phone}</td>
+                            <td>${driver.email}</td>
+                            <td>${driver.date_created}</td>
+                            <td>
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input status" 
+                                               id="customSwitch${driver.id}" data-id="${driver.id}" ${checked}>
+                                        <label class="custom-control-label" for="customSwitch${driver.id}"></label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+
+                if ($.fn.DataTable.isDataTable('.table')) {
+                    $('.table').DataTable().destroy();
+                }
+
+                $('.table tbody').html(html);
+
+                $('.table').DataTable({
+                    "responsive": true,
+                    "lengthChange": false,
+                    "autoWidth": false
+                });
+
+                $('.status').on('change', function() {
+                    const id = $(this).data('id');
+                    const newStatus = $(this).is(':checked') ? 1 : 0;
+                    updateStatus(id, newStatus, 'drivers');
+                });
+
+                $('.edit').on('click', function(e) {
+                    e.preventDefault();
+                    const id = $(this).data('id');
+                    getDriverInfo(id);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Function to get driver information for editing
+function getDriverInfo(driverId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_driver_info',
+            driver_id: driverId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const driver = response.data;
+                $('#driver-name-txt').val(driver.name);
+                $('#driver-phone-txt').val(driver.phone);
+                $('#is-phone-mobile-switch').prop('checked', driver.is_phone_mobile == 1);
+                $('#driver-phone2-txt').val(driver.phone2);
+                $('#is-phone2-mobile-switch').prop('checked', driver.is_phone2_mobile == 1);
+                $('#driver-email-txt').val(driver.email);
+                $('#btn-save-driver').data('driver-id', driverId);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Function to save/update driver
+function drivers_save_button() {
+    const driverData = {
+        name: $('#driver-name-txt').val(),
+        phone: $('#driver-phone-txt').val(),
+        is_phone_mobile: $('#is-phone-mobile-switch').is(':checked') ? 1 : 0,
+        phone2: $('#driver-phone2-txt').val(),
+        is_phone2_mobile: $('#is-phone2-mobile-switch').is(':checked') ? 1 : 0,
+        email: $('#driver-email-txt').val()
+    };
+
+    const driverId = $('#btn-save-driver').data('driver-id');
+
+    if (!driverData.name) {
+        alert('Driver name is required!');
+        return;
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_driver',
+            driver_data: JSON.stringify(driverData),
+            driver_id: driverId || ''
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                clearDriverForm();
+                load_drivers();
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Function to clear the driver form
+function clearDriverForm() {
+    $('#driver-name-txt').val('');
+    $('#driver-phone-txt').val('');
+    $('#is-phone-mobile-switch').prop('checked', false);
+    $('#driver-phone2-txt').val('');
+    $('#is-phone2-mobile-switch').prop('checked', false);
+    $('#driver-email-txt').val('');
+    $('#btn-save-driver').removeData('driver-id');
+}
+
+// Función para guardar/actualizar interested carrier
+function interested_carrier_save_button() {
+    const carrierData = {
+        carrier_id: $('#carrier-select').val(),
+        carrier_status: $('#carrier-status').val(),
+        contact: $('#contact').val(),
+        phone: $('#phone').val(),
+        email: $('#carrier-email').val(),
+        carrier_pay: $('#carrier-pay').val().replace('$', ''),
+        special_instructions: $('#special-instructions').val(),
+        internal_note: $('#internal-note').val(),
+        pickup_date: $('#pickup-date-input').val(),
+        pickup_window: $('#pickup-window').val(),
+        delivery_date: $('#delivery-date-input').val(),
+        delivery_window: $('#delivery-window').val(),
+        insurance_policy_id: $('#insurance-policy').val(),
+        driver_id: $('#driver-name').val()
+    };
+
+    const carrierId = $('#btn-save-interested-carrier').data('carrier-id');
+
+    if (!carrierData.carrier_id) {
+        alert('Carrier selection is required!');
+        return;
+    }
+
+    const isUpdate = carrierId !== '';
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_interested_carrier',
+            carrier_data: JSON.stringify(carrierData),
+            id: carrierId || ''
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                load_interested_carriers();
+                clear_interested_carrier_form();
+            } else {
+                alert(response.error);
+            }
+        },
+        error: function() {
+            alert('Error saving interested carrier. Please contact your administrator.');
+        }
+    });
+}
+
+// Función para cargar los drivers en el select
+function load_drivers_select() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { option: 'load_drivers_select' },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '<option value="" selected disabled>Select a driver</option>';
+                response.data.forEach(driver => {
+                    html += `<option value="${driver.id}">${driver.name}</option>`;
+                });
+                $('#driver-name').html(html);
+
+                // Add event listener for driver selection
+                $('#driver-name').on('change', function() {
+                    const selectedDriverId = $(this).val();
+                    if (selectedDriverId) {
+                        get_driver_phone(selectedDriverId);
+                    } else {
+                        $('#driver-phone').val('');
+                    }
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Función para cargar las pólizas de seguro en el select
+function load_insurance_policies_select() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { option: 'load_insurance_policies_select' },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '<option value="" selected disabled>Select an insurance policy</option>';
+                response.data.forEach(policy => {
+                    html += `<option value="${policy.id}">${policy.number}</option>`;
+                });
+                $('#insurance-policy').html(html);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Función para obtener los detalles del carrier seleccionado
+function get_carrier_details(carrierId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            //option: 'get_carrier_details',
+            option: 'get_carrier_info',
+            id: carrierId
+        },
+        dataType: "json",
+        success: function(response) {
+          //console.log('Todo bien con ger_carrier_details');
+            if (response.error === '') {
+                $('#contact').val(response.data.carrier_main_contact);
+                $('#phone').val(response.data.phone);
+                $('#carrier-email').val(response.data.email);
+                //console.log('Todo bien con ger_carrier_details adentro del IF');
+            } else {
+                alert(response.error);
+            }
+            //console.log('finalizando ger_carrier_details');
+        }
+    });
+}
+
+// Función para obtener el teléfono del driver seleccionado
+function get_driver_phone(driverId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_driver_phone',
+            driver_id: driverId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                $('#driver-phone').val(response.data.phone);
+            } else {
+                alert(response.error);
+                $('#driver-phone').val('');
+            }
+        },
+        error: function() {
+            $('#driver-phone').val('');
+            alert('Error fetching driver phone number');
+        }
+    });
+}
+
+// Función para cargar la lista de interested carriers
+function load_interested_carriers() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { option: 'load_interested_carriers' },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '';
+                response.data.forEach(item => {
+                    const checked = item.status == 1 ? 'checked' : '';
+                    html += `
+                        <tr>
+                            <td><a href="#" class="edit" data-id="${item.id}">${item.carrier_name}</a></td>
+                            <td>${item.carrier_status}</td>
+                            <td>${item.contact}</td>
+                            <td>${item.phone}</td>
+                            <td>${item.pickup_date}</td>
+                            <td>${item.delivery_date}</td>
+                            <td>
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input status" 
+                                               id="customSwitch${item.id}" data-id="${item.id}" ${checked}>
+                                        <label class="custom-control-label" for="customSwitch${item.id}"></label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+
+                // Destruir DataTable existente si ya está inicializada
+                if ($.fn.DataTable.isDataTable('#interested-carriers-table')) {
+                    $('#interested-carriers-table').DataTable().destroy();
+                }
+
+                $('#interested-carriers-table tbody').html(html);
+
+                // Reinicializar DataTable
+                $('#interested-carriers-table').DataTable({
+                    "responsive": true,
+                    "lengthChange": false,
+                    "autoWidth": false
+                });
+
+                // Event listeners
+                $('.status').on('change', function() {
+                    const id = $(this).data('id');
+                    const newStatus = $(this).is(':checked') ? 1 : 0;
+                    updateStatus(id, newStatus, 'interested_carriers');
+                });
+
+                $('.edit').on('click', function(e) {
+                    e.preventDefault();
+                    const id = $(this).data('id');
+                    get_interested_carrier_info(id);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Función para cargar los carriers en el select
+function load_carriers_select(carrierId = 0) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { option: 'load_carriers_select' },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '<option value="" selected disabled>Select a carrier</option>';
+                response.data.forEach(carrier => {
+                    if (carrierId > 0 && carrierId === carrier.id) {
+                        html += `<option value="${carrier.id}" selected>${carrier.name}</option>`;
+                    } else {
+                        html += `<option value="${carrier.id}">${carrier.name}</option>`;
+                    }
+                });
+                $('#carrier-select').html(html);
+
+                // Event listener para cuando se selecciona un carrier
+                
+                $('#carrier-select').on('change', function() {
+                    get_carrier_details($(this).val());
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Función para obtener la información de un interested carrier
+function get_interested_carrier_info(id) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_interested_carrier_info',
+            id: id
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const data = response.data;
+
+                // First, load the list of carriers with the selected carrier ID
+                //load_carriers_select(data.carrier_id);
+
+                // Find the option with the value matching data.carrier_id
+                const $carrierOption = $('#carrier-select option[value="' + data.carrier_id + '"]');
+
+                // If the option is found, set it as the selected option
+                if ($carrierOption.length) {
+                    $('#carrier-select').val(data.carrier_id);
+                } else {
+                    console.error('Invalid carrier ID:', data.carrier_id);
+                }
+
+                // Set driver and trigger change event to load phone
+                if (data.driver_id) {
+                    $('#driver-name').val(data.driver_id).trigger('change');
+                } else {
+                    $('#driver-name').val('');
+                    $('#driver-phone').val('');
+                }
+
+                // Set the other form fields
+                $('#carrier-status').val(data.carrier_status);
+                $('#contact').val(data.contact);
+                $('#phone').val(data.phone);
+                $('#carrier-email').val(data.email);
+                $('#carrier-pay').val(data.carrier_pay);
+                $('#special-instructions').val(data.special_instructions);
+                $('#internal-note').val(data.internal_note);
+                $('#pickup-date-input').val(data.pickup_date);
+                $('#pickup-window').val(data.pickup_window);
+                $('#delivery-date-input').val(data.delivery_date);
+                $('#delivery-window').val(data.delivery_window);
+                $('#insurance-policy').val(data.insurance_policy_id);
+                $('#driver-name').val(data.driver_id);
+                $('#btn-save-interested-carrier').data('carrier-id', id);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Función para limpiar el formulario
+function clear_interested_carrier_form() {
+    //$('#carrier-select').val('').trigger('change');
+    $('#carrier-select').val('');
+    $('#carrier-status').val('active');
+    $('#contact').val('');
+    $('#phone').val('');
+    $('#carrier-email').val('');
+    $('#carrier-pay').val('');
+    $('#special-instructions').val('');
+    $('#internal-note').val('');
+    $('#pickup-date-input').val('');
+    $('#pickup-window').val('estimated');
+    $('#delivery-date-input').val('');
+    $('#delivery-window').val('estimated');
+    $('#insurance-policy').val('');
+    $('#driver-name').val('').trigger('change');
+    $('#driver-phone').val('');
+    
+    $('#btn-save-interested-carrier').removeData('carrier-id');
 }
 
 // Función para cargar la lista de vehículos
@@ -2409,9 +2885,9 @@ function load_sidebar(n = 0) {
     const basePath = getBasePath();
     const baseUrl = `${basePath}dist/php/services.php`;
     
-    console.log('Current path:', window.location.pathname);
-    console.log('Base path:', basePath);
-    console.log('Loading sidebar from:', baseUrl);
+    //console.log('Current path:', window.location.pathname);
+    //console.log('Base path:', basePath);
+    //console.log('Loading sidebar from:', baseUrl);
     
     $.ajax({
         type: "POST",

@@ -17,7 +17,7 @@
 	    if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
 	        echo json_encode([
 	            'error' => 'Session expired or not authenticated',
-	            'redirect' => 'index.html'
+	            'redirect' => '../index.html'
 	        ]);
 	        exit;
 	    }
@@ -28,7 +28,7 @@
 	        session_destroy();
 	        echo json_encode([
 	            'error' => 'Session expired',
-	            'redirect' => 'index.html'
+	            'redirect' => '../index.html'
 	        ]);
 	        exit;
 	    }
@@ -114,6 +114,9 @@
 			case 'load_sidebar':
 				loadSidebarFunction();
 			    break;
+			case 'load_vehicles':
+			    loadVehiclesFunction();
+			    break;
 			case 'update_role_status':
 				updateRoleStatusFunction();
 				break;
@@ -144,6 +147,9 @@
 		    case 'save_permissions':
 			   savePermissionsFunction();
 			   break;
+			case 'save_vehicle':
+			    saveVehicleFunction();
+			    break;
 			case 'update_user':
 				updateUserFunction();
 				break;	
@@ -159,6 +165,9 @@
 			case 'update_customer_status':
 		        updateCustomerStatusFunction();
 		        break;
+		    case 'update_vehicle_status':
+			    updateVehicleStatusFunction();
+			    break;
 			case 'get_user_info':
 				getUserInfoFunction();
 				break;
@@ -186,17 +195,38 @@
 			case 'get_customer_info':
 		        getCustomerInfoFunction();
 		        break;
-		    case 'load_vehicles':
-			    loadVehiclesFunction();
-			    break;
-			case 'get_vehicle_info':
+		    case 'get_vehicle_info':
 			    getVehicleInfoFunction();
 			    break;
-			case 'update_vehicle_status':
-			    updateVehicleStatusFunction();
+			case 'load_interested_carriers':
+		        loadInterestedCarriersFunction();
+		        break;
+		    case 'save_interested_carrier':
+		        saveInterestedCarrierFunction();
+		        break;
+		    case 'get_interested_carrier_info':
+		        getInterestedCarrierInfoFunction();
+		        break;
+		    case 'update_interested_carrier_status':
+		        updateInterestedCarrierStatusFunction();
+		        break;
+		    case 'load_carriers_select':
+		        loadCarriersSelectFunction();
+		        break;
+		    case 'load_drivers':
+			    loadDriversFunction();
 			    break;
-			case 'save_vehicle':
-			    saveVehicleFunction();
+			case 'get_driver_info':
+			    getDriverInfoFunction();
+			    break;
+			case 'save_driver':
+			    saveDriverFunction();
+			    break;
+		    case 'load_drivers_select':
+			    loadDriversSelectFunction();
+			    break;
+			case 'get_driver_phone':
+			    getDriverPhoneFunction();
 			    break;
 		}
 	}
@@ -221,6 +251,340 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function loadDriversSelectFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $query = "SELECT id, name, phone 
+	              FROM drivers
+	              WHERE status = 1
+	              ORDER BY name";
+
+	    $result = $conn->query($query);
+
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading drivers';
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function getDriverPhoneFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+
+	    $driverId = $_POST['driver_id'];
+	    
+	    $query = "SELECT phone FROM drivers WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $driverId);
+
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching driver phone: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	// Load drivers list
+	function loadDriversFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $query = "SELECT id, name, phone, email, 
+	              DATE_FORMAT(date_created, '%d-%m-%Y') as date_created, status
+	              FROM drivers 
+	              ORDER BY name";
+
+	    $result = $conn->query($query);
+
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading drivers: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	// Get driver information
+	function getDriverInfoFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+
+	    $driverId = $_POST['driver_id'];
+	    
+	    $query = "SELECT * FROM drivers WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $driverId);
+
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching driver data: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	// Save or update driver
+	function saveDriverFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    try {
+	        $driverData = json_decode($_POST['driver_data'], true);
+	        $driverId = isset($_POST['driver_id']) ? $_POST['driver_id'] : null;
+
+	        if ($driverId) {
+	            // Update existing driver
+	            $query = "UPDATE drivers SET 
+	                     name = ?, phone = ?, is_phone_mobile = ?,
+	                     phone2 = ?, is_phone2_mobile = ?, email = ?
+	                     WHERE id = ?";
+	            
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param(
+	                "ssisssi",
+	                $driverData['name'], 
+	                $driverData['phone'],
+	                $driverData['is_phone_mobile'],
+	                $driverData['phone2'],
+	                $driverData['is_phone2_mobile'],
+	                $driverData['email'],
+	                $driverId
+	            );
+
+	            if ($stmt->execute()) {
+	                $jsondata['message'] = 'Driver updated successfully!';
+	            } else {
+	                throw new Exception("Error updating driver: " . $stmt->error);
+	            }
+	        } else {
+	            // Insert new driver
+	            $query = "INSERT INTO drivers (
+	                     name, phone, is_phone_mobile,
+	                     phone2, is_phone2_mobile, email, status
+	                     ) VALUES (?, ?, ?, ?, ?, ?, 1)";
+	            
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param(
+	                "ssisss",
+	                $driverData['name'], 
+	                $driverData['phone'],
+	                $driverData['is_phone_mobile'],
+	                $driverData['phone2'],
+	                $driverData['is_phone2_mobile'],
+	                $driverData['email']
+	            );
+
+	            if ($stmt->execute()) {
+	                $jsondata['message'] = 'Driver saved successfully!';
+	            } else {
+	                throw new Exception("Error saving driver: " . $stmt->error);
+	            }
+	        }
+	    } catch (Exception $e) {
+	        $jsondata['error'] = $e->getMessage();
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function getInterestedCarrierInfoFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+
+	    $id = $_POST['id'];
+
+	    $query = "SELECT 
+	                ic.id,
+	                ic.carrier_id,
+	                c.name as carrier_name,
+	                ic.carrier_status,
+	                c.carrier_main_contact as contact,
+	                c.phone,
+	                DATE_FORMAT(ic.pickup_date, '%Y-%m-%d') as pickup_date,
+	                DATE_FORMAT(ic.delivery_date, '%Y-%m-%d') as delivery_date,
+	                ic.carrier_pay,
+	                ic.special_instructions,
+	                ic.internal_note,
+	                ic.pickup_window,
+	                ic.delivery_window,
+	                ic.insurance_policy_id,
+	                ic.driver_id
+	            FROM interested_carriers ic
+	            INNER JOIN carriers c ON ic.carrier_id = c.id
+	            WHERE ic.id = ?";
+
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $id);
+
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching interested carrier data: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function loadCarriersSelectFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $query = "SELECT id, name 
+	              FROM carriers
+	              WHERE status = 1
+	              ORDER BY name";
+
+	    $result = $conn->query($query);
+
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading carriers';
+	    }
+//error_log('load_carriers_select response: ' . json_encode($jsondata));
+	    echo json_encode($jsondata);
+	}
+
+	function loadInterestedCarriersFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+	    
+	    $query = "SELECT ic.id, c.name as carrier_name, ic.carrier_status, 
+	                     c.carrier_main_contact as contact, c.phone,
+	                     DATE_FORMAT(ic.pickup_date, '%Y-%m-%d') as pickup_date,
+	                     DATE_FORMAT(ic.delivery_date, '%Y-%m-%d') as delivery_date,
+	                     ic.status
+	              FROM interested_carriers ic
+	              INNER JOIN carriers c ON ic.carrier_id = c.id
+	              ORDER BY ic.date_created DESC";
+	    
+	    $result = $conn->query($query);
+	    
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading interested carriers: ' . $conn->error;
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+function saveInterestedCarrierFunction() {
+	error_log ('llamando a salvar carrier');
+    global $conn;
+    $jsondata = ['error' => '', 'message' => ''];
+    $updateId = $_POST['id'];
+    try {
+        $carrierData = json_decode($_POST['carrier_data'], true);
+        $carrierId = isset($_POST['carrier_id']) ? $_POST['carrier_id'] : null;
+
+        if ($updateId!=='') {
+            // Update
+            $query = "UPDATE interested_carriers SET 
+                     carrier_id = '$carrierData[carrier_id]', carrier_status = '$carrierData[carrier_status]', carrier_pay = '$carrierData[carrier_pay]',
+                     special_instructions = '$carrierData[special_instructions]', internal_note = '$carrierData[internal_note]',
+                     pickup_date = '$carrierData[pickup_date]', pickup_window = '$carrierData[pickup_window]',
+                     delivery_date = '$carrierData[delivery_date]', delivery_window = '$carrierData[delivery_window]',
+                     insurance_policy_id = " . ($carrierData['insurance_policy_id'] ? $carrierData['insurance_policy_id'] : 'null') . ", 
+                     driver_id = " . ($carrierData['driver_id'] ? $carrierData['driver_id'] : 'null') . "
+                     WHERE id = $updateId";
+
+            $stmt = $conn->prepare($query);
+            if (!$stmt) {
+                $errorMessage = "Error preparing update query: " . $conn->error;
+                error_log($errorMessage);
+                throw new Exception($errorMessage);
+            }
+
+            if (!$stmt->execute()) {
+                $errorMessage = "Error executing update query: " . $stmt->error;
+                //error_log($errorMessage);
+                throw new Exception($errorMessage);
+            }
+
+            $message = 'Interested carrier updated successfully!';
+        } else {
+            // Insert
+            $query = "INSERT INTO interested_carriers (
+                     carrier_id, carrier_status, carrier_pay,
+                     special_instructions, internal_note,
+                     pickup_date, pickup_window,
+                     delivery_date, delivery_window,
+                     insurance_policy_id, driver_id, status
+                     ) VALUES (
+                     '$carrierData[carrier_id]', '$carrierData[carrier_status]', '$carrierData[carrier_pay]',
+                     '$carrierData[special_instructions]', '$carrierData[internal_note]',
+                     '$carrierData[pickup_date]', '$carrierData[pickup_window]',
+                     '$carrierData[delivery_date]', '$carrierData[delivery_window]',
+                     " . ($carrierData['insurance_policy_id'] ? $carrierData['insurance_policy_id'] : 'null') . ", 
+                     " . ($carrierData['driver_id'] ? $carrierData['driver_id'] : 'null') . ", 
+                     1)";
+
+            $stmt = $conn->prepare($query);
+            if (!$stmt) {
+                $errorMessage = "Error preparing insert query: " . $conn->error;
+                //error_log($errorMessage);
+                throw new Exception($errorMessage);
+            }
+
+            if (!$stmt->execute()) {
+                $errorMessage = "Error executing insert query: " . $stmt->error;
+                //error_log($errorMessage);
+                throw new Exception($errorMessage);
+            }
+
+            $lastInsertId = $conn->insert_id;
+            $message = 'Interested carrier saved successfully!';
+            $jsondata['insertedId'] = $lastInsertId;
+        }
+
+        $jsondata['message'] = $message;
+    } catch (Exception $e) {
+        $jsondata['error'] = 'Error: ' . $e->getMessage();
+    }
+
+    echo json_encode($jsondata);
+}
+
+	function updateInterestedCarrierStatusFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+	    
+	    $id = $_POST['id'];
+	    $status = $_POST['status'];
+	    
+	    $query = "UPDATE interested_carriers SET status = ? WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("ii", $status, $id);
+	    
+	    if ($stmt->execute()) {
+	        $jsondata['message'] = 'Status updated successfully!';
+	    } else {
+	        $jsondata['error'] = 'Error updating status: ' . $conn->error;
+	    }
+	    
+	    echo json_encode($jsondata);
 	}
 
 	function loadVehiclesFunction() {
@@ -1196,7 +1560,7 @@
 	    } else {
 	        $jsondata['error'] = 'Error fetching carrier data';
 	    }
-	    
+	    //error_log(json_encode($jsondata));
 	    echo json_encode($jsondata);
 	}
 
