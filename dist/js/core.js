@@ -103,6 +103,10 @@ $(function(){
         drivers_save_button();
     });
 
+    $('#btn-save-insurance-policy').click(function() {
+        insurance_policy_save_button();
+    });
+
 });
 
 function new_function(){
@@ -134,6 +138,186 @@ function new_function(){
       }    
     });
   }
+}
+
+
+
+// Function to load insurance policies
+function load_insurance_policies() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { 
+            option: 'load_insurance_policies'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '';
+                response.data.forEach(policy => {
+                    const checked = policy.status == 1 ? 'checked' : '';
+                    html += `
+                        <tr>
+                            <td>${policy.id}</td>
+                            <td><a href="#" class="edit-policy" data-id="${policy.id}">${policy.policy_number}</a></td>
+                            <td>${policy.insurance_company}</td>
+                            <td>${policy.expiration_date}</td>
+                            <td>$${parseFloat(policy.liability_amount).toFixed(2)}</td>
+                            <td>$${parseFloat(policy.cargo_amount).toFixed(2)}</td>
+                            <td>${policy.date_created}</td>
+                            <td>
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input policy-status" 
+                                               id="customSwitch${policy.id}" data-id="${policy.id}" ${checked}>
+                                        <label class="custom-control-label" for="customSwitch${policy.id}"></label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+
+                // Destroy existing DataTable if it exists
+                if ($.fn.DataTable.isDataTable('#insurance-policies-table')) {
+                    $('#insurance-policies-table').DataTable().destroy();
+                }
+
+                $('#insurance-policies-table tbody').html(html);
+
+                // Reinitialize DataTable
+                $('#insurance-policies-table').DataTable({
+                    "responsive": true,
+                    "lengthChange": false,
+                    "autoWidth": false
+                });
+
+                // Add event listeners
+                $('.policy-status').on('change', function() {
+                    const id = $(this).data('id');
+                    const newStatus = $(this).is(':checked') ? 1 : 0;
+                    updatePolicyStatus(id, newStatus);
+                });
+
+                $('.edit-policy').on('click', function(e) {
+                    e.preventDefault();
+                    const id = $(this).data('id');
+                    getPolicyInfo(id);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Function to save or update insurance policy
+function insurance_policy_save_button() {
+    const formData = new FormData();
+    formData.append('option', 'save_insurance_policy');
+    
+    const policyData = {
+        policy_number: $('#policy-number').val(),
+        insurance_company: $('#insurance-company').val(),
+        expiration_date: $('#expiration-date').val(),
+        liability_amount: $('#liability-amount').val().replace('$', ''),
+        cargo_amount: $('#cargo-amount').val().replace('$', ''),
+        document_name: $('#document-name').val()
+    };
+
+    formData.append('policy_data', JSON.stringify(policyData));
+    
+    const policyId = $('#btn-save-insurance-policy').data('policy-id');
+    if (policyId) {
+        formData.append('policy_id', policyId);
+    }
+
+    const documentFile = $('#insurance-document')[0].files[0];
+    if (documentFile) {
+        formData.append('insurance_document', documentFile);
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                clearPolicyForm();
+                load_insurance_policies();
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Function to get insurance policy information
+function getPolicyInfo(policyId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_policy_info',
+            policy_id: policyId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const policy = response.data;
+                $('#policy-number').val(policy.policy_number);
+                $('#insurance-company').val(policy.insurance_company);
+                $('#expiration-date').val(policy.expiration_date);
+                $('#liability-amount').val('$' + parseFloat(policy.liability_amount).toFixed(2));
+                $('#cargo-amount').val('$' + parseFloat(policy.cargo_amount).toFixed(2));
+                $('#document-name').val(policy.document_name);
+                
+                // Store policy ID for update
+                $('#btn-save-insurance-policy').data('policy-id', policyId);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Function to update policy status
+function updatePolicyStatus(policyId, newStatus) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'update_policy_status',
+            policy_id: policyId,
+            status: newStatus
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+            } else {
+                alert(response.error);
+                // Revert switch if error
+                $(`#customSwitch${policyId}`).prop('checked', !newStatus);
+            }
+        }
+    });
+}
+
+// Function to clear the form
+function clearPolicyForm() {
+    $('#policy-number').val('');
+    $('#insurance-company').val('');
+    $('#expiration-date').val('');
+    $('#liability-amount').val('');
+    $('#cargo-amount').val('');
+    $('#document-name').val('');
+    $('#insurance-document').val('');
+    $('.custom-file-label').html('Choose file');
+    $('#btn-save-insurance-policy').removeData('policy-id');
 }
 
 // Function to load drivers list
@@ -368,7 +552,7 @@ function load_insurance_policies_select() {
             if (response.error === '') {
                 let html = '<option value="" selected disabled>Select an insurance policy</option>';
                 response.data.forEach(policy => {
-                    html += `<option value="${policy.id}">${policy.number}</option>`;
+                    html += `<option value="${policy.id}">${policy.policy_number}</option>`;
                 });
                 $('#insurance-policy').html(html);
             } else {
@@ -558,6 +742,12 @@ function get_interested_carrier_info(id) {
                 } else {
                     $('#driver-name').val('');
                     $('#driver-phone').val('');
+                }
+
+                if (data.insurance_policy_id) {
+                    $('#insurance-policy').val(data.insurance_policy_id);
+                } else {
+                    $('#insurance-policy').val('');
                 }
 
                 // Set the other form fields

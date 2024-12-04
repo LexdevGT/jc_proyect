@@ -117,6 +117,18 @@
 			case 'load_vehicles':
 			    loadVehiclesFunction();
 			    break;
+			case 'load_carriers_select':
+		        loadCarriersSelectFunction();
+		        break;
+		    case 'load_drivers':
+			    loadDriversFunction();
+			    break;
+			case 'load_drivers_select':
+			    loadDriversSelectFunction();
+			    break;
+		    case 'load_interested_carriers':
+		        loadInterestedCarriersFunction();
+		        break;
 			case 'update_role_status':
 				updateRoleStatusFunction();
 				break;
@@ -150,6 +162,12 @@
 			case 'save_vehicle':
 			    saveVehicleFunction();
 			    break;
+			case 'save_driver':
+			    saveDriverFunction();
+			    break;
+		    case 'save_interested_carrier':
+		        saveInterestedCarrierFunction();
+		        break;
 			case 'update_user':
 				updateUserFunction();
 				break;	
@@ -168,6 +186,9 @@
 		    case 'update_vehicle_status':
 			    updateVehicleStatusFunction();
 			    break;
+		    case 'update_interested_carrier_status':
+		        updateInterestedCarrierStatusFunction();
+		        break;
 			case 'get_user_info':
 				getUserInfoFunction();
 				break;
@@ -198,35 +219,30 @@
 		    case 'get_vehicle_info':
 			    getVehicleInfoFunction();
 			    break;
-			case 'load_interested_carriers':
-		        loadInterestedCarriersFunction();
-		        break;
-		    case 'save_interested_carrier':
-		        saveInterestedCarrierFunction();
-		        break;
-		    case 'get_interested_carrier_info':
-		        getInterestedCarrierInfoFunction();
-		        break;
-		    case 'update_interested_carrier_status':
-		        updateInterestedCarrierStatusFunction();
-		        break;
-		    case 'load_carriers_select':
-		        loadCarriersSelectFunction();
-		        break;
-		    case 'load_drivers':
-			    loadDriversFunction();
-			    break;
 			case 'get_driver_info':
 			    getDriverInfoFunction();
 			    break;
-			case 'save_driver':
-			    saveDriverFunction();
-			    break;
-		    case 'load_drivers_select':
-			    loadDriversSelectFunction();
-			    break;
 			case 'get_driver_phone':
 			    getDriverPhoneFunction();
+			    break;
+			case 'get_interested_carrier_info':
+		        getInterestedCarrierInfoFunction();
+		        break;
+
+	        case 'load_insurance_policies':
+			    loadInsurancePoliciesFunction();
+			    break;
+			case 'get_policy_info':
+			    getPolicyInfoFunction();
+			    break;
+			case 'save_insurance_policy':
+			    saveInsurancePolicyFunction();
+			    break;
+			case 'update_policy_status':
+			    updatePolicyStatusFunction();
+			    break;
+			case 'load_insurance_policies_select':
+			    loadInsurancePoliciesSelectFunction();
 			    break;
 		}
 	}
@@ -251,6 +267,223 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function loadInsurancePoliciesSelectFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $query = "SELECT ip.id, ip.policy_number
+	              FROM insurance_policies ip
+	              WHERE ip.status = 1";
+
+	    $result = $conn->query($query);
+
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading insurance policies';
+	    }
+error_log(json_encode($jsondata));
+	    echo json_encode($jsondata);
+	}
+
+	// Load insurance policies list
+	function loadInsurancePoliciesFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $query = "SELECT id, policy_number, insurance_company, 
+	              DATE_FORMAT(expiration_date, '%Y-%m-%d') as expiration_date,
+	              liability_amount, cargo_amount, document_name, document_path,
+	              DATE_FORMAT(date_created, '%d-%m-%Y') as date_created,
+	              status
+	              FROM insurance_policies 
+	              ORDER BY date_created DESC";
+
+	    $result = $conn->query($query);
+
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading insurance policies: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	// Get insurance policy information
+	function getPolicyInfoFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+
+	    $policyId = $_POST['policy_id'];
+	    
+	    $query = "SELECT id, policy_number, insurance_company, 
+	              DATE_FORMAT(expiration_date, '%Y-%m-%d') as expiration_date,
+	              liability_amount, cargo_amount, document_name, document_path
+	              FROM insurance_policies 
+	              WHERE id = ?";
+	              
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $policyId);
+
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching policy data: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	// Save or update insurance policy
+	function saveInsurancePolicyFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    try {
+	        $conn->begin_transaction();
+
+	        $policyData = json_decode($_POST['policy_data'], true);
+	        $policyId = isset($_POST['policy_id']) ? $_POST['policy_id'] : null;
+
+	        // Handle file upload if present
+	        $documentPath = null;
+	        if (isset($_FILES['insurance_document']) && $_FILES['insurance_document']['error'] === UPLOAD_ERR_OK) {
+	            $uploadDir = '../uploads/insurance_documents/';
+	            if (!file_exists($uploadDir)) {
+	                mkdir($uploadDir, 0777, true);
+	            }
+
+	            $fileName = time() . '_' . basename($_FILES['insurance_document']['name']);
+	            $targetPath = $uploadDir . $fileName;
+
+	            if (move_uploaded_file($_FILES['insurance_document']['tmp_name'], $targetPath)) {
+	                $documentPath = 'uploads/insurance_documents/' . $fileName;
+	            } else {
+	                throw new Exception("Error uploading file");
+	            }
+	        }
+
+	        if ($policyId) {
+	            // Update existing policy
+	            $query = "UPDATE insurance_policies SET 
+	                    policy_number = ?, 
+	                    insurance_company = ?,
+	                    expiration_date = ?,
+	                    liability_amount = ?,
+	                    cargo_amount = ?,
+	                    document_name = ?" .
+	                    ($documentPath ? ", document_path = ?" : "") .
+	                    " WHERE id = ?";
+
+	            $stmt = $conn->prepare($query);
+	            
+	            if ($documentPath) {
+	                $stmt->bind_param(
+	                    "sssddssi",
+	                    $policyData['policy_number'],
+	                    $policyData['insurance_company'],
+	                    $policyData['expiration_date'],
+	                    $policyData['liability_amount'],
+	                    $policyData['cargo_amount'],
+	                    $policyData['document_name'],
+	                    $documentPath,
+	                    $policyId
+	                );
+	            } else {
+	                $stmt->bind_param(
+	                    "sssddsi",
+	                    $policyData['policy_number'],
+	                    $policyData['insurance_company'],
+	                    $policyData['expiration_date'],
+	                    $policyData['liability_amount'],
+	                    $policyData['cargo_amount'],
+	                    $policyData['document_name'],
+	                    $policyId
+	                );
+	            }
+
+	            if (!$stmt->execute()) {
+	                throw new Exception("Error updating policy: " . $stmt->error);
+	            }
+
+	            $jsondata['message'] = 'Insurance policy updated successfully!';
+	        } else {
+	            // Insert new policy
+	            $query = "INSERT INTO insurance_policies (
+	                    policy_number, insurance_company, expiration_date,
+	                    liability_amount, cargo_amount, document_name" .
+	                    ($documentPath ? ", document_path" : "") . ")
+	                    VALUES (?, ?, ?, ?, ?, ?" . ($documentPath ? ", ?" : "") . ")";
+
+	            $stmt = $conn->prepare($query);
+
+	            if ($documentPath) {
+	                $stmt->bind_param(
+	                    "sssddss",
+	                    $policyData['policy_number'],
+	                    $policyData['insurance_company'],
+	                    $policyData['expiration_date'],
+	                    $policyData['liability_amount'],
+	                    $policyData['cargo_amount'],
+	                    $policyData['document_name'],
+	                    $documentPath
+	                );
+	            } else {
+	                $stmt->bind_param(
+	                    "sssdds",
+	                    $policyData['policy_number'],
+	                    $policyData['insurance_company'],
+	                    $policyData['expiration_date'],
+	                    $policyData['liability_amount'],
+	                    $policyData['cargo_amount'],
+	                    $policyData['document_name']
+	                );
+	            }
+
+	            if (!$stmt->execute()) {
+	                throw new Exception("Error saving policy: " . $stmt->error);
+	            }
+
+	            $jsondata['message'] = 'Insurance policy saved successfully!';
+	        }
+
+	        $conn->commit();
+	    } catch (Exception $e) {
+	        $conn->rollback();
+	        $jsondata['error'] = $e->getMessage();
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	// Update insurance policy status
+	function updatePolicyStatusFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    $policyId = $_POST['policy_id'];
+	    $status = $_POST['status'];
+
+	    $query = "UPDATE insurance_policies SET status = ? WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("ii", $status, $policyId);
+
+	    if ($stmt->execute()) {
+	        $jsondata['message'] = 'Policy status updated successfully!';
+	    } else {
+	        $jsondata['error'] = 'Error updating policy status: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
 	}
 
 	function loadDriversSelectFunction() {
