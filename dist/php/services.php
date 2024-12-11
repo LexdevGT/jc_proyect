@@ -213,9 +213,6 @@
 			case 'get_available_users':
 			    getAvailableUsersFunction();
 			    break;
-			case 'get_customer_info':
-		        getCustomerInfoFunction();
-		        break;
 		    case 'get_vehicle_info':
 			    getVehicleInfoFunction();
 			    break;
@@ -244,6 +241,23 @@
 			case 'load_insurance_policies_select':
 			    loadInsurancePoliciesSelectFunction();
 			    break;
+
+			case 'load_payments':
+			    loadPaymentsFunction();
+			    break;
+			case 'save_payment':
+			    savePaymentFunction();
+			    break;
+			case 'get_payment_info':
+			    getPaymentInfoFunction();
+			    break;
+			case 'update_payment_status':
+			    updatePaymentStatusFunction();
+			    break;
+			case 'load_orders_select':
+			    loadOrdersSelectFunction();
+			    break;
+
 		}
 	}
 
@@ -269,6 +283,146 @@
 		echo json_encode($jsondata);
 	}
 
+	function loadPaymentsFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $query = "SELECT p.id, p.order_id, DATE_FORMAT(p.payment_date, '%Y-%m-%d') as payment_date, 
+	              p.payment_type, p.payment_direction, p.payment_amount, p.identification,
+	              p.status, DATE_FORMAT(p.date_created, '%d-%m-%Y') as date_created
+	              FROM payments p 
+	              ORDER BY p.date_created DESC";
+
+	    $result = $conn->query($query);
+
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading payments: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function savePaymentFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    try {
+	        $paymentData = json_decode($_POST['payment_data'], true);
+	        $paymentId = isset($_POST['payment_id']) ? $_POST['payment_id'] : null;
+
+	        if ($paymentId) {
+	            $query = "UPDATE payments SET 
+	                     order_id = ?, payment_date = ?, payment_type = ?,
+	                     payment_direction = ?, payment_amount = ?,
+	                     identification = ?, note = ?
+	                     WHERE id = ?";
+	            
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param(
+	                "isssdssi",
+	                $paymentData['order_id'],
+	                $paymentData['payment_date'],
+	                $paymentData['payment_type'],
+	                $paymentData['payment_direction'],
+	                $paymentData['payment_amount'],
+	                $paymentData['identification'],
+	                $paymentData['note'],
+	                $paymentId
+	            );
+	        } else {
+	            $query = "INSERT INTO payments (
+	                     order_id, payment_date, payment_type,
+	                     payment_direction, payment_amount,
+	                     identification, note, status
+	                     ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)";
+	            
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param(
+	                "isssdss",
+	                $paymentData['order_id'],
+	                $paymentData['payment_date'],
+	                $paymentData['payment_type'],
+	                $paymentData['payment_direction'],
+	                $paymentData['payment_amount'],
+	                $paymentData['identification'],
+	                $paymentData['note']
+	            );
+	        }
+
+	        if ($stmt->execute()) {
+	            $jsondata['message'] = $paymentId ? 'Payment updated successfully!' : 'Payment saved successfully!';
+	        } else {
+	            throw new Exception($stmt->error);
+	        }
+	    } catch (Exception $e) {
+	        $jsondata['error'] = 'Error: ' . $e->getMessage();
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function getPaymentInfoFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+
+	    $paymentId = $_POST['payment_id'];
+	    
+	    $query = "SELECT * FROM payments WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $paymentId);
+
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching payment data: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function updatePaymentStatusFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    $paymentId = $_POST['payment_id'];
+	    $status = $_POST['status'];
+
+	    $query = "UPDATE payments SET status = ? WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("ii", $status, $paymentId);
+
+	    if ($stmt->execute()) {
+	        $jsondata['message'] = 'Payment status updated successfully!';
+	    } else {
+	        $jsondata['error'] = 'Error updating payment status: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function loadOrdersSelectFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $query = "SELECT id FROM orders WHERE status = 1 ORDER BY id DESC";
+	    $result = $conn->query($query);
+
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading orders: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
 	function loadInsurancePoliciesSelectFunction() {
 	    global $conn;
 	    $jsondata = ['error' => '', 'data' => []];
@@ -287,7 +441,7 @@
 	    } else {
 	        $jsondata['error'] = 'Error loading insurance policies';
 	    }
-error_log(json_encode($jsondata));
+//error_log(json_encode($jsondata));
 	    echo json_encode($jsondata);
 	}
 
@@ -1934,17 +2088,17 @@ function saveInterestedCarrierFunction() {
 		$error = '';
 		$data = array();
 		// Consulta SQL para obtener los datos de la tabla 'orders'
-		$sql = "SELECT id, 
+		$sql = "SELECT orders.id, 
 				   'Order' AS type, 
 				   DATE_FORMAT(shipment_first_avalilable_pickup_date, '%m/%d/%Y') AS date_created, 
 				   orders.status, 
-				   CONCAT(customers.name, ' ', customers.last_name)  AS customer_name, 
+				   CONCAT(customers.first_name, ' ', customers.last_name)  AS customer_name, 
 				   origin_contact_phone_1 AS phone, 
-				   customers.email  AS customer_email, 
+				   customers.email1  AS customer_email, 
 				   '' AS customer_vehicles 
 				FROM orders
 				INNER JOIN customers
-				ON customers.id_customer = orders.id_customer ";
+				ON customers.id = orders.id_customer ";
 
 		$result = $conn->query($sql);
 
@@ -2022,7 +2176,7 @@ function saveInterestedCarrierFunction() {
 	    if($customerId != ''){
 	        $query = "INSERT INTO orders (origin_saved_contact, origin_auction_site, origin_terminal, origin_type, origin_address, origin_address2, origin_city, origin_state, origin_contact_postal_code, origin_country, origin_contact_name, origin_contact_phone_1, origin_contact_email, origin_contact_phone_2, origin_contact_phone_cell, origin_company_name, destination_saved_contact, destination_auction_site, destination_terminal, destination_type, destination_address, destination_address2, destination_city, destination_state, destination_contact_postal_code, destination_country, destination_contact_name, destination_contact_phone_1, destination_contact_email, destination_contact_phone_2, destination_contact_phone_cell, destination_company_name,id_customer,shipment_first_avalilable_pickup_date, transport_type_id,assigned_user_id)
         VALUES ('$origin_saved_contact', '$origin_auction_site', '$origin_terminal', '$origin_type', '$origin_address', '$origin_address2', '$origin_city', '$origin_state', '$origin_contact_postal_code', '$origin_country', '$origin_contact_name', '$origin_contact_phone_1', '$origin_contact_email', '$origin_contact_phone_2', '$origin_contact_phone_cell', '$origin_company_name', '$destination_saved_contact', '$destination_auction_site', '$destination_terminal', '$destination_type', '$destination_address', '$destination_address2', '$destination_city', '$destination_state', '$destination_contact_postal_code', '$destination_country', '$destination_contact_name', '$destination_contact_phone_1', '$destination_contact_email', '$destination_contact_phone_2', '$destination_contact_phone_cell', '$destination_company_name','$customerId','$firstAvailablePickupDate',$transportType,$assignedUserId)";
-    error_log($query);
+    //error_log($query);
 	        $execute_query = $conn->query($query);
 
 	        if($execute_query){
@@ -2070,8 +2224,8 @@ function saveInterestedCarrierFunction() {
 		$data = array();
 		$userId    = isset($_POST['user_id']) ? $_POST['user_id'] : '';
 
-		$query = "SELECT zipcode, city, town, country
-					FROM geo_data ";
+		$query = "SELECT physical_zip as zipcode, physical_city as city, locale_name as town, district_name as country
+					FROM zip_detail zd ";
 
 		$execute_query = $conn->query($query);
 
@@ -2094,32 +2248,7 @@ function saveInterestedCarrierFunction() {
 		$jsondata['error']   	= $error;
 		echo json_encode($jsondata);
 	}
-/*
-	function getCustomerInfoFunction(){
-		global $conn;
-		$jsondata = array();
-		$error = '';
-		$data = array();
 
-		$customerId = $_POST['customer_id'];
-
-		$query = "SELECT id_customer, name, last_name, phone, email, company, state, zip, country, assigned_to, status, city, billing_address 
-					FROM customers 
-					WHERE id_customer = $customerId";
-					//error_log($query);
-		$result = $conn->query($query);
-
-		if ($result) {
-			$data = $result->fetch_assoc();
-		} else {
-			$error = 'Error fetching user data: '.$conn->error;
-		}
-
-		$jsondata['data'] = $data;
-		$jsondata['error'] = $error;
-		echo json_encode($jsondata);
-	}
-*/
 	function loadTransportTypeFunction(){
 		global $conn;
 		$jsondata = array();
@@ -2158,34 +2287,33 @@ function saveInterestedCarrierFunction() {
 		$data = array();
 		$userId    = isset($_POST['user_id']) ? $_POST['user_id'] : '';
 
-		$query = "SELECT id_customer, name, last_name, phone, email, company, state, zip, country, assigned_to, status, city, billing_address 
-					FROM customers ";
+		$query = "SELECT 
+						id, 
+						first_name, 
+						last_name, 
+						phone1, 
+						email1, 
+						company_id, 
+						state, 
+						zip, 
+						country, 
+						assigned_user_id, 
+						status, 
+						city, 
+						address1  
+					FROM customers 
+					WHERE status = 1";
 
-		$execute_query = $conn->query($query);
+		$result = $conn->query($query);
 
-		if($execute_query){
-			
-			while($row = $execute_query->fetch_array()){
-				$data[] = array(
-					'id_customer' 		=> $row['id_customer'],
-					'name' 				=> $row['name'],
-					'last_name' 		=> $row['last_name'],
-					'phone' 			=> $row['phone'],
-					'email'				=> $row['email'],
-					'company'			=> $row['company'],
-					'state'				=> $row['state'],
-					'zip'				=> $row['zip'],
-					'country'			=> $row['country'],
-					'assigned_to'		=> $row['assigned_to'],
-					'status'			=> $row['status'],
-					'city'				=> $row['city'],
-					'billing_address'	=> $row['billing_address']
-				);
+		if ($result) {
+			while($row = $result->fetch_assoc()) {
+			    $data[] = $row;
 			}
-			
-		}else{
-			$error = 'Error: '.$conn->error;
+		} else {
+			$error = 'Error fetching zipcode data: '.$conn->error;
 		}
+		
 //error_log(print_r($data,true));
 		$jsondata['data']		= $data;
 		$jsondata['error']   	= $error;

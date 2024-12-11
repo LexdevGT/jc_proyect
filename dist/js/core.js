@@ -140,7 +140,200 @@ function new_function(){
   }
 }
 
+function load_payments() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { option: 'load_payments' },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '';
+                response.data.forEach(payment => {
+                    const checked = payment.status == 1 ? 'checked' : '';
+                    html += `
+                        <tr>
+                            <td>${payment.id}</td>
+                            <td><a href="#" class="edit-payment" data-id="${payment.id}">${payment.order_id}</a></td>
+                            <td>${payment.payment_date}</td>
+                            <td>${payment.payment_type}</td>
+                            <td>${payment.payment_direction}</td>
+                            <td>$${parseFloat(payment.payment_amount).toFixed(2)}</td>
+                            <td>${payment.identification}</td>
+                            <td>
+                                <div class="form-group">
+                                    <div class="custom-control custom-switch custom-switch-on-success">
+                                        <input type="checkbox" class="custom-control-input payment-status" 
+                                               id="customSwitch${payment.id}" data-id="${payment.id}" ${checked}>
+                                        <label class="custom-control-label" for="customSwitch${payment.id}"></label>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
 
+                if ($.fn.DataTable.isDataTable('#payments-table')) {
+                    $('#payments-table').DataTable().destroy();
+                }
+
+                $('#payments-table tbody').html(html);
+
+                $('#payments-table').DataTable({
+                    "responsive": true,
+                    "lengthChange": false,
+                    "autoWidth": false,
+                    "buttons": ["csv", "excel", "pdf", "print", "colvis"]
+                }).buttons().container().appendTo('#payments-table_wrapper .col-md-6:eq(0)');
+
+                $('.payment-status').on('change', function() {
+                    const id = $(this).data('id');
+                    const newStatus = $(this).is(':checked') ? 1 : 0;
+                    updatePaymentStatus(id, newStatus);
+                });
+
+                $('.edit-payment').on('click', function(e) {
+                    e.preventDefault();
+                    const id = $(this).data('id');
+                    getPaymentInfo(id);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Load orders dropdown
+function loadOrdersSelect() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { option: 'load_orders_select' },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '<option value="" disabled selected>Select an order</option>';
+                response.data.forEach(order => {
+                    html += `<option value="${order.id}">Order #${order.id}</option>`;
+                });
+                $('#payment-order-select').html(html);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Get payment information for editing
+function getPaymentInfo(paymentId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_payment_info',
+            payment_id: paymentId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const payment = response.data;
+                $('#payment-order-select').val(payment.order_id);
+                $('#payment-date-input').val(payment.payment_date);
+                $('#payment-type').val(payment.payment_type);
+                $('#payment-direction').val(payment.payment_direction);
+                $('#payment-amount').val('$' + parseFloat(payment.payment_amount).toFixed(2));
+                $('#payment-identification').val(payment.identification);
+                $('#payment-note').val(payment.note);
+                $('#btn-save-payment').data('payment-id', paymentId);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Save or update payment
+function payments_save_button() {
+    const paymentData = {
+        order_id: $('#payment-order-select').val(),
+        payment_date: $('#payment-date-input').val(),
+        payment_type: $('#payment-type').val(),
+        payment_direction: $('#payment-direction').val(),
+        payment_amount: $('#payment-amount').val().replace('$', '').trim(),
+        identification: $('#payment-identification').val(),
+        note: $('#payment-note').val()
+    };
+
+    // Validate required fields
+    if (!paymentData.order_id || !paymentData.payment_date || !paymentData.payment_type || 
+        !paymentData.payment_direction || !paymentData.payment_amount) {
+        alert('Please fill in all required fields!');
+        return;
+    }
+
+    // Validate amount format
+    if (isNaN(paymentData.payment_amount)) {
+        alert('Please enter a valid payment amount!');
+        return;
+    }
+
+    const paymentId = $('#btn-save-payment').data('payment-id');
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_payment',
+            payment_data: JSON.stringify(paymentData),
+            payment_id: paymentId || ''
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                clearPaymentForm();
+                load_payments();
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+// Update payment status
+function updatePaymentStatus(paymentId, newStatus) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'update_payment_status',
+            payment_id: paymentId,
+            status: newStatus
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+            } else {
+                alert(response.error);
+                // Revert switch if error
+                $(`#customSwitch${paymentId}`).prop('checked', !newStatus);
+            }
+        }
+    });
+}
+
+// Clear form fields
+function clearPaymentForm() {
+    $('#payment-order-select').val('');
+    $('#payment-date-input').val('');
+    $('#payment-type').val('');
+    $('#payment-direction').val('');
+    $('#payment-amount').val('');
+    $('#payment-identification').val('');
+    $('#payment-note').val('');
+    $('#btn-save-payment').removeData('payment-id');
+}
 
 // Function to load insurance policies
 function load_insurance_policies() {
@@ -2519,8 +2712,8 @@ function get_new_order_customer_info(customerId) {
     success: function(response) {
       if (response.error === '') {
         
-        $('#name').val(response.data.name + ' ' + response.data.last_name);
-        $('#company_name').val(response.data.company);
+        $('#name').val(response.data.first_name + ' ' + response.data.last_name);
+        $('#company_name').val(response.data.company_name);
 
       } else {
         alert(response.error);
@@ -2626,18 +2819,12 @@ function load_select_phones(id = 0) {
         if (id === 0){
           phonesHtml += '<option value="" disabled selected>Select a phone</option>';
         }
+    
         response.data.forEach(phone => {
-          //fullName = phone.name + ' ' + phone.last_name;
-          if (phone.status == 1){
-
-            if (id !== 0 && id === phone.id_customer){
-              phonesHtml += `<option value="${phone.id_customer}" selected>${phone.phone}</option>`;  
-            }else{
-              phonesHtml += `<option value="${phone.id_customer}">${phone.phone}</option>`;  
-            }
-          }
-          
+            const selected = (id !== 0 && id === phone.id) ? 'selected' : '';
+            phonesHtml += `<option value="${phone.id}" ${selected}>${phone.phone1} - ${phone.first_name} ${phone.last_name}</option>`;
         });
+
         $('#new_order1_phone').html(phonesHtml);
       } else {
         alert(response.error);

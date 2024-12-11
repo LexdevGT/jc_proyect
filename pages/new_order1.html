@@ -273,7 +273,7 @@
                 <div class="col">
                   <div class="form-group">
                     <label>Referral Source</label>
-                    <select class="form-control select2" id="referral_source">
+                    <select class="form-control select2" id="customer-referral-select">
                       <option>No referral sources</option>
                     </select>
                   </div>  
@@ -293,7 +293,7 @@
                 <div class="col">
                   <div class="form-group">
                     <label>Assigned Team</label>
-                    <select class="form-control select2" id="new_order1_assigned_team">
+                    <select class="form-control select2" id="customer-team-select">
                       <option>No teams</option>
                     </select>
                   </div>  
@@ -378,6 +378,8 @@
     $('.nav-link').find('i.fa-table').parent().addClass( "active" );
   }, 1200);
   load_new_order1();
+  load_referral_sources_select();
+  load_teams_select();
 </script>
 </body>
 </html>
