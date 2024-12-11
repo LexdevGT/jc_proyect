@@ -405,24 +405,6 @@
 	    echo json_encode($jsondata);
 	}
 
-	function loadOrdersSelectFunction() {
-	    global $conn;
-	    $jsondata = ['error' => '', 'data' => []];
-
-	    $query = "SELECT id FROM orders WHERE status = 1 ORDER BY id DESC";
-	    $result = $conn->query($query);
-
-	    if ($result) {
-	        while ($row = $result->fetch_assoc()) {
-	            $jsondata['data'][] = $row;
-	        }
-	    } else {
-	        $jsondata['error'] = 'Error loading orders: ' . $conn->error;
-	    }
-
-	    echo json_encode($jsondata);
-	}
-
 	function loadInsurancePoliciesSelectFunction() {
 	    global $conn;
 	    $jsondata = ['error' => '', 'data' => []];

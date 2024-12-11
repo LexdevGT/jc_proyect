@@ -208,13 +208,13 @@ function loadOrdersSelect() {
     $.ajax({
         type: "POST",
         url: "../dist/php/services.php",
-        data: { option: 'load_orders_select' },
+        data: { option: 'load_global_search' },
         dataType: "json",
         success: function(response) {
             if (response.error === '') {
                 let html = '<option value="" disabled selected>Select an order</option>';
                 response.data.forEach(order => {
-                    html += `<option value="${order.id}">Order #${order.id}</option>`;
+                    html += `<option value="${order.id}">Order #${order.id} - ${order.customer_name}</option>`;
                 });
                 $('#payment-order-select').html(html);
             } else {
