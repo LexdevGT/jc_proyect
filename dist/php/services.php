@@ -254,9 +254,6 @@
 			case 'update_payment_status':
 			    updatePaymentStatusFunction();
 			    break;
-			case 'load_orders_select':
-			    loadOrdersSelectFunction();
-			    break;
 
 		}
 	}
@@ -1146,7 +1143,7 @@ function saveInterestedCarrierFunction() {
 	            $addOn = $vehicleData['add_on'] ?: '';
 
 	            $stmt->bind_param(
-	                "isssisdddssssdssdddss",
+	                "isssisdddssssdssddds",
 	                $modelYear,
 	                $make,
 	                $model,
