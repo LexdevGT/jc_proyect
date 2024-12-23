@@ -543,6 +543,18 @@
 <script src="../dist/js/adminlte.js"></script>
 <!-- Advanced Transports -->
 <script src="../dist/js/core.js"></script>
+<script type="text/javascript">
+  $(function(){
+    //Initialize Select2 Elements
+    $('.select2').select2()
+
+    //Date picker
+    $('#first_available_pickup_date').datetimepicker({
+        format: 'L'
+    });
+
+  })
+</script>
 
 <script type="text/javascript">
   setTimeout(
