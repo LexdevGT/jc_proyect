@@ -7,14 +7,6 @@ $(function(){
     150);
 
     //--START new_order2.html
-    
-    //Initialize Select2 Elements
-    $('.select2').select2()
-
-    //Date picker
-    $('#first_available_pickup_date').datetimepicker({
-        format: 'L'
-    });
 
     $('#btn_new_order2_save').click(function(){
       //window.location.replace("new_order1.html");
@@ -3046,6 +3038,7 @@ function load_select_phones(id = 0) {
 }
 
 // Función para cargar los usuarios en sus campos de users maintenance.
+/*
 function get_user_info(userId) {
   $.ajax({
     contentType: "application/x-www-form-urlencoded",
@@ -3071,6 +3064,32 @@ function get_user_info(userId) {
       }
     }
   });
+}
+*/
+function get_user_info(userId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_user_info',
+            user_id: userId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                load_select_roles(response.data.role);
+                $('#user-name-txt').val(response.data.name);
+                $('#user-lastname-txt').val(response.data.last_name);
+                $('#user-email-txt').val(response.data.email);
+                $('#user-start-date').val(response.data.start_date);
+                $('#user-end-date').val(response.data.end_date);
+                $('#user-weekly-goal').val(response.data.weekly_goal);
+                $('#btn-save-users-maintenance').data('user-id', userId);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
 }
 
 // Función para cargar SELECT roles
@@ -3108,6 +3127,7 @@ function load_select_roles(idr = 0) {
   });
 }
 
+/*
 function users_page_save_button() {
   var userName = $('#user-name-txt').val();
   var userLastName = $('#user-lastname-txt').val();
@@ -3155,6 +3175,63 @@ function users_page_save_button() {
       }
     }
   });
+}
+
+*/
+
+function users_page_save_button() {
+    var userName = $('#user-name-txt').val();
+    var userLastName = $('#user-lastname-txt').val();
+    var userEmail = $('#user-email-txt').val();
+    var userPassword = $('#user-password-txt').val();
+    var userConfirmPassword = $('#user-confirmpassword-txt').val();
+    var userRole = $('#user-select-role').val();
+    var userId = $('#btn-save-users-maintenance').data('user-id');
+    var startDate = $('#user-start-date').val();
+    var endDate = $('#user-end-date').val();
+    var weeklyGoal = $('#user-weekly-goal').val();
+
+    if (userName === '' || userLastName === '' || userEmail === '' || userRole === null || 
+        startDate === '' || endDate === '' || weeklyGoal === '') {
+        alert('All fields must be filled!');
+        return;
+    }
+
+    if ((userPassword !== '' || userConfirmPassword !== '') && userPassword !== userConfirmPassword) {
+        alert('Passwords do not match!');
+        return;
+    }
+
+    var ajaxData = {
+        option: userId ? 'update_user' : 'save_user',
+        user_id: userId || '',
+        user_name: userName,
+        user_lastname: userLastName,
+        user_email: userEmail,
+        user_role: userRole,
+        start_date: startDate,
+        end_date: endDate,
+        weekly_goal: weeklyGoal
+    };
+
+    if (userPassword !== '' && userConfirmPassword !== '') {
+        ajaxData.user_password = userPassword;
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: ajaxData,
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                window.location.replace('m_users.html');
+            } else {
+                alert(response.error);
+            }
+        }
+    });
 }
 
 function updateUserStatus(userId, newStatus) {

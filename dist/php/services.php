@@ -2385,7 +2385,7 @@ function saveInterestedCarrierFunction() {
 		$jsondata['error']   	= $error;
 		echo json_encode($jsondata);
 	}
-
+/*
 	function getUserInfoFunction(){
 		global $conn;
 		$jsondata = array();
@@ -2407,6 +2407,40 @@ function saveInterestedCarrierFunction() {
 		$jsondata['error'] = $error;
 		echo json_encode($jsondata);
 	}
+*/
+	function getUserInfoFunction() {
+	    global $conn;
+	    $jsondata = array();
+	    $error = '';
+	    $data = array();
+
+	    $userId = $_POST['user_id'];
+
+	    $query = "SELECT name, last_name, email, role,
+					ug.start_date, ug.end_date, ug.weekly_goal
+					FROM users 
+					LEFT JOIN (
+						SELECT ug.start_date, ug.end_date, ug.weekly_goal,ug.user_id 
+						FROM user_goals ug 
+						WHERE ug.status = 1
+					) ug 
+					ON users.id = ug.user_id  
+					WHERE users.id = ? ";
+
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $userId);
+
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $data = $result->fetch_assoc();
+	    } else {
+	        $error = 'Error fetching user data: ' . $conn->error;
+	    }
+
+	    $jsondata['data'] = $data;
+	    $jsondata['error'] = $error;
+	    echo json_encode($jsondata);
+	}
 
 	function updateUserStatusFunction(){
 		global $conn;
@@ -2426,7 +2460,9 @@ function saveInterestedCarrierFunction() {
 
 		echo json_encode($jsondata);
 	}
+	
 
+/*
 	function saveUserFunction(){
 	    global $conn;
 	    $jsondata = array();
@@ -2452,29 +2488,111 @@ function saveInterestedCarrierFunction() {
 	    $jsondata['error'] = $error;
 	    echo json_encode($jsondata);
 	}
-
-	function updateUserFunction(){
+*/
+	function saveUserFunction() {
 	    global $conn;
 	    $jsondata = array();
 	    $error = '';
 	    $message = '';
 
-	    $userId = $_POST['user_id'];
-	    $userName = $_POST['user_name'];
-	    $userLastName = $_POST['user_lastname'];
-	    $userEmail = $_POST['user_email'];
-	    $userRole = $_POST['user_role'];
+	    try {
+	        $conn->begin_transaction();
 
-	    $query = "UPDATE users SET name = '$userName', last_name = '$userLastName', email = '$userEmail', role = $userRole WHERE id = $userId";
+	        $userName = $_POST['user_name'];
+	        $userLastName = $_POST['user_lastname'];
+	        $userEmail = $_POST['user_email'];
+	        $userPassword = password_hash($_POST['user_password'], PASSWORD_DEFAULT);
+	        $userRole = $_POST['user_role'];
+	        $startDate = $_POST['start_date'];
+	        $endDate = $_POST['end_date'];
+	        $weeklyGoal = $_POST['weekly_goal'];
+
+	        // Insertar usuario
+	        $query = "INSERT INTO users (name, last_name, email, code, role, status, creation_date) 
+	                VALUES (?, ?, ?, ?, ?, 1, NOW())";
+	        
+	        $stmt = $conn->prepare($query);
+	        $stmt->bind_param("ssssi", $userName, $userLastName, $userEmail, $userPassword, $userRole);
+	        
+	        if (!$stmt->execute()) {
+	            throw new Exception('Error saving user: ' . $conn->error);
+	        }
+	        
+	        $userId = $conn->insert_id;
+
+	        // Insertar metas del usuario
+	        $queryGoals = "INSERT INTO user_goals (user_id, start_date, end_date, weekly_goal) 
+	                      VALUES (?, ?, ?, ?)";
+	        
+	        $stmt = $conn->prepare($queryGoals);
+	        $stmt->bind_param("issd", $userId, $startDate, $endDate, $weeklyGoal);
+	        
+	        if (!$stmt->execute()) {
+	            throw new Exception('Error saving user goals: ' . $conn->error);
+	        }
+
+	        $conn->commit();
+	        $message = 'User saved successfully!';
+
+	    } catch (Exception $e) {
+	        $conn->rollback();
+	        $error = $e->getMessage();
+	    }
+
+	    $jsondata['message'] = $message;
+	    $jsondata['error'] = $error;
+	    echo json_encode($jsondata);
+	}
+
+	function updateUserFunction(){
+	    global $conn;
+	    $jsondata 		= array();
+	    $error 			= '';
+	    $message 		= '';
+
+	    $userId 		= $_POST['user_id'];
+	    $userName 		= $_POST['user_name'];
+	    $userLastName 	= $_POST['user_lastname'];
+	    $userEmail 		= $_POST['user_email'];
+	    $userRole 		= $_POST['user_role'];
+
+	    $startDate 	= $_POST['start_date'];
+	    $endDate 	= $_POST['end_date'];
+	    $weeklyGoal = $_POST['weekly_goal'];
+
+	    $query = "UPDATE users AS u
+			JOIN user_goals  AS ug ON ug.user_id = u.id
+			SET u.name       = '$userName',
+			    u.last_name  = '$userLastName',
+			    u.email      = '$userEmail',
+			    u.role       = $userRole,
+			    ug.status    = 0
+			WHERE u.id = $userId";
 
 	    // Verificar si se incluye un cambio de contraseña
 	    if (isset($_POST['user_password']) && $_POST['user_password'] !== '') {
 	        $userPassword = password_hash($_POST['user_password'], PASSWORD_DEFAULT);
 	        $query = "UPDATE users SET name = '$userName', last_name = '$userLastName', email = '$userEmail', role = $userRole, code = '$userPassword' WHERE id = $userId";
+	        $query = "UPDATE users AS u
+				JOIN user_goals  AS ug ON ug.user_id = u.id
+				SET u.name       = '$userName',
+				    u.last_name  = '$userLastName',
+				    u.email      = '$userEmail',
+				    u.role       = $userRole,
+				    u.code 		 = '$userPassword',
+				    ug.status    = 0
+				WHERE u.id = $userId";
 	    }
 
 	    if ($conn->query($query)) {
-	        $message = 'User updated successfully!';
+	    	$query = "INSERT INTO user_goals (user_id,start_date,end_date,weekly_goal)
+	    		VALUES ($userId,'$startDate','$endDate',$weeklyGoal)";
+	    	if ($conn->query($query)) {
+	    		$message = 'User updated successfully!';
+	    	}else{
+	    		$error = "User can't update weekly Goal!";
+	    	}
+	        
 	    } else {
 	        $error = 'Error updating user: '.$conn->error;
 	    }
