@@ -7,6 +7,15 @@ $(function(){
     150);
 
     //--START new_order2.html
+    
+    //Initialize Select2 Elements
+    $('.select2').select2()
+
+    //Date picker
+    $('#first_available_pickup_date').datetimepicker({
+        format: 'L'
+    });
+
     $('#btn_new_order2_save').click(function(){
       //window.location.replace("new_order1.html");
       save_new_order1_and_2();
@@ -17,6 +26,7 @@ $(function(){
     $('#sign-in').click(function(){
       sign_in();
     });
+
     //--FINISH button Sign in from index.html
 
     //--START button Save role from m_roles.html
@@ -89,7 +99,6 @@ $(function(){
       save_permissions();
     });
 
-    
     $('#btn-save-vehicle').click(function() {
         vehicles_save_button();
     });
@@ -106,7 +115,6 @@ $(function(){
     $('#btn-save-insurance-policy').click(function() {
         insurance_policy_save_button();
     });
-
 });
 
 function new_function(){
@@ -2235,7 +2243,139 @@ function load_companies() {
   });
 }
 
+function load_select_referral_sources(selectedId = 0) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'load_referral_sources'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '<option value="" disabled selected>Select a referral source</option>';
+                response.data.forEach(source => {
+                    if (selectedId !== 0 && selectedId === source.id) {
+                        html += `<option value="${source.id}" selected>${source.name}</option>`;
+                    } else {
+                        html += `<option value="${source.id}">${source.name}</option>`;
+                    }
+                });
+                $('#referral-source').html(html);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function load_order_view() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('id');
+    
+    if (!orderId) {
+        alert('No order ID specified');
+        return;
+    }else{
+        $('#order_view_idOrder').html(orderId);
+    }
+    
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_order_info',
+            order_id: orderId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const order = response.data;
+                
+                // Cargar los selects con los valores seleccionados
+                load_select_transport_type(order.transport_type_id, '#transport-type');
+                load_select_user(order.assigned_user_id);
+
+                // Llenar los campos con los datos disponibles
+                console.log(order.creation_date);
+                $('#order-created').val(order.creation_date);
+                $('#order-status').val(order.status);
+                $('#first-available-pickup-date').val(order.pickup_date);
+                
+                // Información del cliente
+                $('#customer-name').text(order.customer_name || '');
+                $('#customer-phone').text(order.customer_phone || '');
+                $('#customer-email').text(order.customer_email || '');
+                
+                // Información de origen
+                $('#origin-contact').text(order.origin_contact_name || '');
+                $('#origin-address').text(order.origin_address || '');
+                $('#origin-city').text(order.origin_city || '');
+                $('#origin-state').text(order.origin_state || '');
+                $('#origin-postal-code').text(order.origin_contact_postal_code || '');
+                
+                // Información de destino
+                $('#destination-contact').text(order.destination_contact_name || '');
+                $('#destination-address').text(order.destination_address || '');
+                $('#destination-city').text(order.destination_city || '');
+                $('#destination-state').text(order.destination_state || '');
+                $('#destination-postal-code').text(order.destination_contact_postal_code || '');
+                
+            } else {
+                alert(response.error);
+            }
+        },
+        error: function(xhr, status, error) {
+            alert('Error loading order data: ' + error);
+        }
+    });
+}
+
+
 // Función para cargar los datos de global search al iniciar.
+function load_global_search() {
+    let table = $('#example1').DataTable({
+        "responsive": true,
+        "lengthChange": false,
+        "autoWidth": false,
+        "buttons": ["csv", "excel", "pdf", "print", "colvis"]
+    });
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'load_global_search'
+        },
+        dataType: "json",
+        beforeSend: function() {
+            $('.loader').show();
+        },
+        success: function(response) {
+            if (response.error === '') {
+                table.clear().draw();
+                
+                response.data.forEach(function(order) {
+                    table.row.add([
+                        `<a href="order_view.html?id=${order.id}">${order.id}</a>`,
+                        order.type,
+                        order.date_created,
+                        order.status,
+                        order.customer_name,
+                        order.phone,
+                        order.customer_email,
+                        order.customer_vehicles
+                    ]).draw(false);
+                });
+
+                table.buttons().container().appendTo('#example1_wrapper .col-md-6:eq(0)');
+                $('.loader').hide();
+            }
+        }
+    });
+}
+
+/*
 function load_global_search() {
 
    // Inicializamos la tabla
@@ -2283,6 +2423,7 @@ function load_global_search() {
     }
   });
 }
+*/
 
 function save_new_order1_and_2(){
   // Recuperar los datos de sessionStorage
@@ -2528,18 +2669,6 @@ function get_origin_city(zipcode) {
   });
 }
 
-/*
-function load_new_order1(){
-  load_select_phones();
-  load_select_transport_type();
-  load_select_user();
-  $('#new_order1_phone').change(function(){
-    var customerId = $('#new_order1_phone').val();
-    get_new_order_customer_info(customerId);
-  });
-}
-*/
-
 // Función para cargar los datos de la ciudad segun su zipcode.
 function get_destination_city(zipcode) {
   $.ajax({
@@ -2576,7 +2705,7 @@ function load_new_order1(){
 function load_new_order2(){
 
   load_select_zip_code();
-  load_select_city();
+  //load_select_city();
 
 }
 
@@ -2596,9 +2725,10 @@ function decodeTildes(text) {
 }
 
 // Función para cargar SELECT city
+/*
 function load_select_city(id = 0) {
   var cityHtml = '';
-  var fullName = '';
+
   $.ajax({
     contentType: "application/x-www-form-urlencoded",
     type: "POST",
@@ -2615,7 +2745,6 @@ function load_select_city(id = 0) {
           cityHtml += '<option value="" disabled selected>Select a city</option>';
         }
         response.data.forEach(zipcode => {
-          //fullName = phone.name + ' ' + phone.last_name;
 
           if (id !== 0 && id === zipcode.zip){
             cityHtml += '<option value="'+zipcode.zip+'" selected>'+decodeTildes(zipcode.city)+'</option>';  
@@ -2645,11 +2774,14 @@ function load_select_city(id = 0) {
     }
   });
 }
+*/
 
 // Función para cargar SELECT zip codes
+
 function load_select_zip_code(id = 0) {
   var zipHtml = '';
-  var fullName = '';
+  var cityHtml = '';
+
   $.ajax({
     contentType: "application/x-www-form-urlencoded",
     type: "POST",
@@ -2658,20 +2790,29 @@ function load_select_zip_code(id = 0) {
       option: 'load_zip_codes'
     },
     dataType: "json",
+    beforeSend: function (){
+      $('.loader').show();
+    },
     success: function(response) {
       //console.log(response);  // Añade esto para ver la respuesta completa
       if (response.error === '') {
 
         if (id === 0){
           zipHtml += '<option value="" disabled selected>Select a zip code</option>';
+          cityHtml += '<option value="" disabled selected>Select a city</option>';
         }
         response.data.forEach(zipcode => {
-          //fullName = phone.name + ' ' + phone.last_name;
 
           if (id !== 0 && id === zipcode.zip){
             zipHtml += `<option value="${zipcode.zip}" selected>${zipcode.zip}</option>`;  
           }else{
             zipHtml += `<option value="${zipcode.zip}">${zipcode.zip}</option>`;  
+          }
+
+          if (id !== 0 && id === zipcode.zip){
+            cityHtml += '<option value="'+zipcode.zip+'" selected>'+decodeTildes(zipcode.city)+'</option>';  
+          }else{
+            cityHtml += '<option value="'+zipcode.zip+'">'+decodeTildes(zipcode.city)+'</option>';
           }
           
         });
@@ -2691,9 +2832,25 @@ function load_select_zip_code(id = 0) {
           get_destination_country($('#destinantion_zip').val());
         });
 
+        $('#city_origin').html(cityHtml);
+        $('#city_origin').change(function(){
+          get_origin_city($('#city_origin').val());
+          get_origin_state($('#city_origin').val());
+          get_origin_zip_code($('#city_origin').val());
+          get_origin_country($('#city_origin').val());
+        });
+        $('#destination_city').html(cityHtml);
+        $('#destination_city').change(function(){
+          get_destination_city($('#destination_city').val());
+          get_destination_state($('#destination_city').val());
+          get_destination_zip_code($('#destination_city').val());
+          get_destination_country($('#destination_city').val());
+        });
+
       } else {
         alert(response.error);
       }
+      $('.loader').hide();
     }
   });
 }
@@ -2762,6 +2919,60 @@ function load_select_user(id = 0) {
 }
 
 // Función para cargar SELECT tranport_type
+function load_select_transport_type(selectedId = 0, selectElementId = '#new_order1_tranport_type') {
+    // Convertir el selectedId a número si es string
+    selectedId = parseInt(selectedId) || 0;
+    
+    $.ajax({
+        contentType: "application/x-www-form-urlencoded",
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'load_transport_type'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let transportTypeHtml = '';
+                
+                // Solo agregar la opción "Select" si no hay ID seleccionado
+                if (selectedId === 0) {
+                    transportTypeHtml += '<option value="" disabled selected>Select a transport type</option>';
+                }
+                
+                response.data.forEach(transportType => {
+                    // Asegurarse de que el id sea número para la comparación
+                    const typeId = parseInt(transportType.id);
+                    
+                    if (transportType.status == 1) {
+                        transportTypeHtml += `<option value="${typeId}" 
+                            ${selectedId === typeId ? 'selected' : ''}>
+                            ${transportType.name}
+                        </option>`;
+                    }
+                });
+
+                // Actualizar todos los posibles selects de tipo de transporte
+                const possibleSelectIds = [
+                    '#new_order1_tranport_type',  // Para new_order1.html
+                    '#transport-type',            // Para order_view.html
+                    '#order-transport-type'       // Otro posible ID
+                ];
+
+                possibleSelectIds.forEach(selectId => {
+                    const $select = $(selectId);
+                    if ($select.length) {
+                        $select.html(transportTypeHtml);
+                    }
+                });
+
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+/*
 function load_select_transport_type(id = 0) {
   var transportTypeHtml = '';
   var fullName = '';
@@ -2792,6 +3003,7 @@ function load_select_transport_type(id = 0) {
           }
           
         });
+        //console.log(transportTypeHtml);
         $('#new_order1_tranport_type').html(transportTypeHtml);
       } else {
         alert(response.error);
@@ -2799,7 +3011,7 @@ function load_select_transport_type(id = 0) {
     }
   });
 }
-
+*/
 // Función para cargar SELECT phones
 function load_select_phones(id = 0) {
   var phonesHtml = '';
@@ -3265,12 +3477,16 @@ function load_sidebar(n = 0) {
     //console.log('Current path:', window.location.pathname);
     //console.log('Base path:', basePath);
     //console.log('Loading sidebar from:', baseUrl);
+
+    // Determinar si estamos en dashboard
+    const isDashboard = window.location.pathname.endsWith('dashboard.html');
     
     $.ajax({
         type: "POST",
         url: baseUrl,
         data: { 
-            option: 'load_sidebar'
+            option: 'load_sidebar',
+            from_dashboard: isDashboard ? 'true' : 'false'  // Añadimos este parámetro
         },
         dataType: "json",
         beforeSend: function() {

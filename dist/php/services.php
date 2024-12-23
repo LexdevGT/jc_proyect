@@ -15,6 +15,49 @@
 	    
 	    // Verificar si el usuario está autenticado
 	    if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
+	        $redirectPath = isset($_POST['from_dashboard']) && $_POST['from_dashboard'] === 'true' 
+	            ? 'index.html' 
+	            : '../index.html';
+	            
+	        echo json_encode([
+	            'error' => 'Session expired or not authenticated',
+	            'redirect' => $redirectPath
+	        ]);
+	        exit;
+	    }
+	    
+	    // Verificar tiempo de inactividad (opcional)
+	    $inactivityTimeout = 60 * 60; // 60 minutos
+	    if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time'] > $inactivityTimeout)) {
+	        session_destroy();
+	        $redirectPath = isset($_POST['from_dashboard']) && $_POST['from_dashboard'] === 'true' 
+	            ? '../index.html' 
+	            : 'index.html';
+	            
+	        echo json_encode([
+	            'error' => 'Session expired',
+	            'redirect' => $redirectPath
+	        ]);
+	        exit;
+	    }
+	    
+	    // Actualizar tiempo de última actividad
+	    $_SESSION['login_time'] = time();
+	    
+	    return true;
+	}
+	/*
+	function checkSession() {
+	    // Rutas que no requieren autenticación
+	    $publicRoutes = ['sign_in', 'connect'];
+	    
+	    // Si es una ruta pública, permitir el acceso
+	    if (isset($_POST['option']) && in_array($_POST['option'], $publicRoutes)) {
+	        return true;
+	    }
+	    
+	    // Verificar si el usuario está autenticado
+	    if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
 	        echo json_encode([
 	            'error' => 'Session expired or not authenticated',
 	            'redirect' => '../index.html'
@@ -23,7 +66,7 @@
 	    }
 	    
 	    // Verificar tiempo de inactividad (opcional)
-	    $inactivityTimeout = 30 * 60; // 30 minutos
+	    $inactivityTimeout = 60 * 60; // 30 minutos
 	    if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time'] > $inactivityTimeout)) {
 	        session_destroy();
 	        echo json_encode([
@@ -37,7 +80,7 @@
 	    $_SESSION['login_time'] = time();
 	    
 	    return true;
-	}
+	}*/
 
 	// Evitar cualquier salida antes de la respuesta JSON
 	ob_start();
@@ -255,6 +298,10 @@
 			    updatePaymentStatusFunction();
 			    break;
 
+			case 'get_order_info':
+			    getOrderInfoFunction();
+			    break;
+
 		}
 	}
 
@@ -280,26 +327,57 @@
 		echo json_encode($jsondata);
 	}
 
-	function loadPaymentsFunction() {
+	function getOrderInfoFunction() {
 	    global $conn;
-	    $jsondata = ['error' => '', 'data' => []];
-
-	    $query = "SELECT p.id, p.order_id, DATE_FORMAT(p.payment_date, '%Y-%m-%d') as payment_date, 
-	              p.payment_type, p.payment_direction, p.payment_amount, p.identification,
-	              p.status, DATE_FORMAT(p.date_created, '%d-%m-%Y') as date_created
-	              FROM payments p 
-	              ORDER BY p.date_created DESC";
-
-	    $result = $conn->query($query);
-
-	    if ($result) {
-	        while ($row = $result->fetch_assoc()) {
-	            $jsondata['data'][] = $row;
+	    $jsondata = ['error' => '', 'data' => null];
+	    
+	    $orderId = $_POST['order_id'];
+	    
+	    $query = "SELECT o.*, 
+				  DATE_FORMAT(o.shipment_first_avalilable_pickup_date, '%Y-%m-%d') as pickup_date,
+				  tt.id as transport_type_id,
+				  tt.name as transport_type_name,
+				  CONCAT(u.name, ' ', u.last_name) as assigned_user_name,
+				  CONCAT(c.first_name,' ',c.last_name) as customer_name,
+				  c.phone1 as customer_phone,
+				  c.email1 as customer_email,
+				  o.order_date_created as creation_date
+				  FROM orders o
+				  LEFT JOIN transport_type tt ON o.transport_type_id = tt.id
+				  LEFT JOIN users u ON o.assigned_user_id = u.id
+				  LEFT JOIN customers c ON o.id_customer = c.id
+				  WHERE o.id = ?";
+	              
+	    $stmt = $conn->prepare($query);
+	    if (!$stmt) {
+	        $jsondata['error'] = 'Error preparing statement: ' . $conn->error;
+	        echo json_encode($jsondata);
+	        return;
+	    }
+	    
+	    $stmt->bind_param("i", $orderId);
+	    
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        if ($row = $result->fetch_assoc()) {
+	            // Agregar datos directos de la consulta
+	            $jsondata['data'] = $row;
+	            
+	            // Agregar campos calculados o estáticos si son necesarios
+	            $jsondata['data']['order_number'] = sprintf('ORD-%06d', $row['id']);
+	            $jsondata['data']['status_text'] = $row['status'] ? $row['status'] : 'Pending';
+	            
+	            // Formatear fechas si es necesario
+	            if ($row['shipment_first_avalilable_pickup_date']) {
+	                $jsondata['data']['formatted_pickup_date'] = date('m/d/Y', strtotime($row['shipment_first_avalilable_pickup_date']));
+	            }
+	        } else {
+	            $jsondata['error'] = 'Order not found';
 	        }
 	    } else {
-	        $jsondata['error'] = 'Error loading payments: ' . $conn->error;
+	        $jsondata['error'] = 'Error executing query: ' . $stmt->error;
 	    }
-
+	    error_log(print_r($jsondata,true));
 	    echo json_encode($jsondata);
 	}
 
@@ -1081,7 +1159,7 @@ function saveInterestedCarrierFunction() {
 	            $addOn = $vehicleData['add_on'] ?: '';
 
 	            $stmt->bind_param(
-	                "isssisdddssssdssdddsi",
+	                "isssisdddssssdssssssi",
 	                $modelYear,
 	                $make,
 	                $model,
@@ -1143,7 +1221,7 @@ function saveInterestedCarrierFunction() {
 	            $addOn = $vehicleData['add_on'] ?: '';
 
 	            $stmt->bind_param(
-	                "isssisdddssssdssddds",
+	                "isssisdddssssdssssss",
 	                $modelYear,
 	                $make,
 	                $model,
@@ -2180,7 +2258,16 @@ function saveInterestedCarrierFunction() {
 
 		$query = "SELECT state,state_abbr,zipcode,town,city,country
 					FROM geo_data 
-					WHERE zipcode = $zipcode
+					WHERE zipcode = '$zipcode'
+					";
+		$query = "SELECT district_name as state,
+					physical_city as state_abbr,
+					physical_zip as zipcode,
+					locale_name as town,
+					physical_city as city,
+					country
+					FROM zip_detail
+					WHERE physical_zip = '$zipcode'
 					";
 					//error_log($query);
 		$result = $conn->query($query);
