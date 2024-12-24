@@ -201,8 +201,7 @@
                   <div class="form-group">
                     <label>Phone</label>
                     <select class="form-control select2" id="new_order1_phone">
-                      <option>Phone1</option>
-                      <option>Phone2</option>
+                      <option>Loading phones...</option>
                     </select>
                   </div>  
                 </div>
@@ -260,8 +259,7 @@
                   <div class="form-group">
                     <label>Transport Type</label>
                     <select class="form-control select2" id="new_order1_tranport_type">
-                      <option>Transport1</option>
-                      <option>Transport2</option>
+                      <option>Loading transport types...</option>
                     </select>
                   </div>  
                 </div>
@@ -275,9 +273,8 @@
                 <div class="col">
                   <div class="form-group">
                     <label>Referral Source</label>
-                    <select class="form-control select2" id="referral_source">
-                      <option>Referral Source 1</option>
-                      <option>Referral source 2</option>
+                    <select class="form-control select2" id="customer-referral-select">
+                      <option>No referral sources</option>
                     </select>
                   </div>  
                 </div>
@@ -287,8 +284,7 @@
                   <div class="form-group">
                     <label>Assigned user</label>
                     <select class="form-control select2" id="new_order1_assigned_user">
-                      <option>User1</option>
-                      <option>User2</option>
+                      <option>Loading users...</option>
                     </select>
                   </div>  
                 </div>
@@ -297,9 +293,8 @@
                 <div class="col">
                   <div class="form-group">
                     <label>Assigned Team</label>
-                    <select class="form-control select2" id="new_order1_assigned_team">
-                      <option>Team1</option>
-                      <option>Team2</option>
+                    <select class="form-control select2" id="customer-team-select">
+                      <option>No teams</option>
                     </select>
                   </div>  
                 </div>
@@ -383,6 +378,8 @@
     $('.nav-link').find('i.fa-table').parent().addClass( "active" );
   }, 1200);
   load_new_order1();
+  load_referral_sources_select();
+  load_teams_select();
 </script>
 </body>
 </html>
