@@ -23,6 +23,7 @@
 	            'error' => 'Session expired or not authenticated',
 	            'redirect' => $redirectPath
 	        ]);
+	        //header('Location: '. $redirectPath);
 	        exit;
 	    }
 	    
@@ -31,13 +32,14 @@
 	    if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time'] > $inactivityTimeout)) {
 	        session_destroy();
 	        $redirectPath = isset($_POST['from_dashboard']) && $_POST['from_dashboard'] === 'true' 
-	            ? '../index.html' 
-	            : 'index.html';
+	            ? 'index.html' 
+	            : '../index.html';
 	            
 	        echo json_encode([
 	            'error' => 'Session expired',
 	            'redirect' => $redirectPath
 	        ]);
+	        //header('Location: '. $redirectPath);
 	        exit;
 	    }
 	    
@@ -46,41 +48,6 @@
 	    
 	    return true;
 	}
-	/*
-	function checkSession() {
-	    // Rutas que no requieren autenticación
-	    $publicRoutes = ['sign_in', 'connect'];
-	    
-	    // Si es una ruta pública, permitir el acceso
-	    if (isset($_POST['option']) && in_array($_POST['option'], $publicRoutes)) {
-	        return true;
-	    }
-	    
-	    // Verificar si el usuario está autenticado
-	    if (!isset($_SESSION['logged_in']) || !$_SESSION['logged_in']) {
-	        echo json_encode([
-	            'error' => 'Session expired or not authenticated',
-	            'redirect' => '../index.html'
-	        ]);
-	        exit;
-	    }
-	    
-	    // Verificar tiempo de inactividad (opcional)
-	    $inactivityTimeout = 60 * 60; // 30 minutos
-	    if (isset($_SESSION['login_time']) && (time() - $_SESSION['login_time'] > $inactivityTimeout)) {
-	        session_destroy();
-	        echo json_encode([
-	            'error' => 'Session expired',
-	            'redirect' => '../index.html'
-	        ]);
-	        exit;
-	    }
-	    
-	    // Actualizar tiempo de última actividad
-	    $_SESSION['login_time'] = time();
-	    
-	    return true;
-	}*/
 
 	// Evitar cualquier salida antes de la respuesta JSON
 	ob_start();
@@ -1036,7 +1003,7 @@ function saveInterestedCarrierFunction() {
 	    $jsondata = ['error' => '', 'data' => []];
 
 	    $query = "SELECT id, model_year, make, model, vehicle_type, vin, 
-	              DATE_FORMAT(date_created, '%d-%m-%Y') as date_created, status
+	              DATE_FORMAT(date_created, '%d-%m-%Y') as date_created, link, status
 	              FROM vehicles 
 	              ORDER BY date_created DESC";
 
@@ -1113,11 +1080,8 @@ function saveInterestedCarrierFunction() {
 	                    make = ?,
 	                    model = ?,
 	                    vehicle_type = ?,
-	                    is_inop = ?,
 	                    notes = ?,
-	                    carrier_fee = ?,
-	                    broker_fee = ?,
-	                    vehicle_tariff = ?,
+	                    link = ?,
 	                    vin = ?,
 	                    plate_number = ?,
 	                    lot_number = ?,
@@ -1141,11 +1105,8 @@ function saveInterestedCarrierFunction() {
 	            $make = $vehicleData['make'] ?: '';
 	            $model = $vehicleData['model'] ?: '';
 	            $vehicleType = $vehicleData['vehicle_type'] ?: '';
-	            $isInop = (int)$vehicleData['is_inop'];
 	            $notes = $vehicleData['notes'] ?: '';
-	            $carrierFee = $vehicleData['carrier_fee'] ?: 0.00;
-	            $brokerFee = $vehicleData['broker_fee'] ?: 0.00;
-	            $vehicleTariff = $vehicleData['vehicle_tariff'] ?: 0.00;
+	            $link = $vehicleData['link'] ?: '';
 	            $vin = $vehicleData['vin'] ?: '';
 	            $plateNumber = $vehicleData['plate_number'] ?: '';
 	            $lotNumber = $vehicleData['lot_number'] ?: '';
@@ -1159,16 +1120,13 @@ function saveInterestedCarrierFunction() {
 	            $addOn = $vehicleData['add_on'] ?: '';
 
 	            $stmt->bind_param(
-	                "isssisdddssssdssssssi",
+	                "isssssssssdssssssi",
 	                $modelYear,
 	                $make,
 	                $model,
 	                $vehicleType,
-	                $isInop,
 	                $notes,
-	                $carrierFee,
-	                $brokerFee,
-	                $vehicleTariff,
+	                $link,
 	                $vin,
 	                $plateNumber,
 	                $lotNumber,
@@ -1187,11 +1145,10 @@ function saveInterestedCarrierFunction() {
 	        } else {
 	            // Insert new vehicle
 	            $query = "INSERT INTO vehicles (
-	                    model_year, make, model, vehicle_type, is_inop, notes,
-	                    carrier_fee, broker_fee, vehicle_tariff, vin, plate_number,
+	                    model_year, make, model, vehicle_type, notes, link, vin, plate_number,
 	                    lot_number, color, weight, weight_measure, mods,
 	                    vehicle_length, vehicle_width, vehicle_height, add_on, status
-	                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
+	                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
 
 	            $stmt = $conn->prepare($query);
 	            if (!$stmt) {
@@ -1203,11 +1160,8 @@ function saveInterestedCarrierFunction() {
 	            $make = $vehicleData['make'] ?: '';
 	            $model = $vehicleData['model'] ?: '';
 	            $vehicleType = $vehicleData['vehicle_type'] ?: '';
-	            $isInop = (int)$vehicleData['is_inop'];
 	            $notes = $vehicleData['notes'] ?: '';
-	            $carrierFee = $vehicleData['carrier_fee'] ?: 0.00;
-	            $brokerFee = $vehicleData['broker_fee'] ?: 0.00;
-	            $vehicleTariff = $vehicleData['vehicle_tariff'] ?: 0.00;
+	            $link = $vehicleData['link'] ?: '';
 	            $vin = $vehicleData['vin'] ?: '';
 	            $plateNumber = $vehicleData['plate_number'] ?: '';
 	            $lotNumber = $vehicleData['lot_number'] ?: '';
@@ -1221,16 +1175,13 @@ function saveInterestedCarrierFunction() {
 	            $addOn = $vehicleData['add_on'] ?: '';
 
 	            $stmt->bind_param(
-	                "isssisdddssssdssssss",
+	                "isssssssssdssssss",
 	                $modelYear,
 	                $make,
 	                $model,
 	                $vehicleType,
-	                $isInop,
 	                $notes,
-	                $carrierFee,
-	                $brokerFee,
-	                $vehicleTariff,
+	                $link,
 	                $vin,
 	                $plateNumber,
 	                $lotNumber,

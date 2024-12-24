@@ -26,15 +26,37 @@
   <link rel="stylesheet" href="../dist/css/adminlte.min.css">
   <!-- overlayScrollbars -->
   <link rel="stylesheet" href="../plugins/overlayScrollbars/css/OverlayScrollbars.min.css">
- 
+  <style>
+    /* Estilos para el loader */
+    .loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8); /* Fondo semi-transparente */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999; /* Para estar encima de todo */
+    }
+
+    .loader img {
+      max-width: 100%;
+      height: auto;
+    }
+
+  </style>
   </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
 
   <!-- Preloader -->
   <div class="preloader flex-column justify-content-center align-items-center bg-dark">
-    <img class="animation__shake" src="../pages/images/logo-webw.png" alt="AdminLTELogo" height="100" width="180">../
+    <img class="animation__shake" src="../pages/images/logo-webw.png" alt="AdminLTELogo" height="100" width="180">
   </div>
+
+  
 
   <!-- Navbar -->
   <nav class="main-header navbar navbar-expand navbar-white navbar-light">
@@ -111,6 +133,11 @@
         <div class="row mb-2">
           <div class="col-sm-6">
             <h1 class="m-0">New Order</h1>
+            <!-- loader -->
+            <div class="loader flex-column justify-content-center align-items-center " style="display: none;">
+              <img class="loader__img" src="../pages/images/logo-webw.png" alt="AdminLTELogo" height="100" width="180">
+              <span style="color: white;">Loading...</span>
+            </div>
           </div><!-- /.col -->
         </div><!-- /.row -->
       </div><!-- /.container-fluid -->
@@ -135,48 +162,46 @@
                   <div class="col-lg-6">
                     <div class="form-group">
                       <label>Zip Code Search</label>
-                      <select class="form-control select2" id="zip">
-                        <option>Zip 1</option>
-                        <option>Zip 2</option>
+                      <select class="form-control select2" id="zip_origin">
+                        <option>Loading zip codes...</option>
                       </select>
                   </div>  
                 </div>
                 <div class="col-lg-6">
                   <div class="form-group">
                     <label>City Search</label>
-                    <select class="form-control select2" id="city">
-                      <option>City 1</option>
-                      <option>City 2</option>
+                    <select class="form-control select2" id="city_origin">
+                      <option>Loading cities...</option>
                     </select>
                   </div>  
                 </div>
               </div> 
               </div>
             </div>
+            <!--
             <div class="row">
               <div class="col">
                 <div class="form-group">
                   <label>Address Search</label>
-                  <input type="text" id="address_search" class="form-control">
+                  <input type="text" id="address_search_origin" class="form-control">
                 </div>  
               </div>
             </div>
+          -->
             <div class="row">
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Saved Contact</label>
-                  <select class="form-control select2" id="contact">
-                    <option>Contact 1</option>
-                    <option>Contact 2</option>
+                  <select class="form-control select2" id="contact_origin">
+                    <option>No saved contacts</option>
                   </select>
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Auction Site</label>
-                  <select class="form-control select2" id="action_site">
-                    <option>Site 1</option>
-                    <option>Site 2</option>
+                  <select class="form-control select2" id="action_site_origin">
+                    <option>No auction sites</option>
                   </select>
                 </div>  
               </div>
@@ -185,16 +210,15 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Terminal</label>
-                  <select class="form-control select2" id="terminal">
-                    <option>Terminal 1</option>
-                    <option>Terminal 2</option>
+                  <select class="form-control select2" id="terminal_origin">
+                    <option>No terminals</option>
                   </select>
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Origin Type</label>
-                  <select class="form-control select2" id="origin_type">
+                  <select class="form-control select2" id="origin_type_origin">
                     <option>Type 1</option>
                     <option>Type 2</option>
                   </select>
@@ -226,13 +250,13 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Origin City</label>
-                  <input type="text" id="origin_city" class="form-control">
+                  <input type="text" id="origin_city_txt" class="form-control">
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Origin State</label>
-                  <input type="text" id="origin_state" class="form-control">
+                  <input type="text" id="origin_state_txt" class="form-control">
                 </div>  
               </div>
             </div>
@@ -240,13 +264,13 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Origin Contact Postal Code</label>
-                  <input type="text" id="origin_city" class="form-control">
+                  <input type="text" id="origin_postal_code_txt" class="form-control">
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Origin Country</label>
-                  <input type="text" id="origin_state" class="form-control">
+                  <input type="text" id="origin_country_txt" class="form-control">
                 </div>  
               </div>
             </div>
@@ -254,13 +278,13 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Origin Contact Name</label>
-                  <input type="text" id="origin_city" class="form-control">
+                  <input type="text" id="origin_contact_name_txt" class="form-control">
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Origin Contact Phone 1</label>
-                  <input type="text" id="origin_state" class="form-control">
+                  <input type="text" id="origin_contact_phone1_txt" class="form-control">
                 </div>  
               </div>
             </div>
@@ -268,13 +292,13 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Origin Contact Email</label>
-                  <input type="text" id="origin_city" class="form-control">
+                  <input type="text" id="origin_email_txt" class="form-control">
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Origin Contact Phone2</label>
-                  <input type="text" id="origin_state" class="form-control">
+                  <input type="text" id="origin_contact_phone2_txt" class="form-control">
                 </div>  
               </div>
             </div>
@@ -282,13 +306,13 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Origin Contact Phone Cell</label>
-                  <input type="text" id="origin_city" class="form-control">
+                  <input type="text" id="origin_contact_phone_cell_txt" class="form-control">
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Origin Company Name</label>
-                  <input type="text" id="origin_state" class="form-control">
+                  <input type="text" id="origin_company_name_txt" class="form-control">
                 </div>  
               </div>
             </div>
@@ -306,8 +330,7 @@
                     <div class="form-group">
                       <label>Zip Code Search</label>
                       <select class="form-control select2" id="destinantion_zip">
-                        <option>Zip 1</option>
-                        <option>Zip 2</option>
+                        <option>Loading zip codes...</option>
                       </select>
                   </div>  
                 </div>
@@ -315,12 +338,12 @@
                   <div class="form-group">
                     <label>City Search</label>
                     <select class="form-control select2" id="destination_city">
-                      <option>City 1</option>
-                      <option>City 2</option>
+                      <option>Loading cities...</option>
                     </select>
                   </div>  
                 </div>
               </div> 
+            <!--
             <div class="row">
               <div class="col">
                 <div class="form-group">
@@ -329,6 +352,7 @@
                 </div>  
               </div>
             </div>
+          -->
             <div class="row">
               <div class="col-sm-6">
                 <div class="form-group">
@@ -342,7 +366,7 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Auction Site</label>
-                  <select class="form-control select2" id="destination_action_site">
+                  <select class="form-control select2" id="destination_auction_site">
                     <option>Site 1</option>
                     <option>Site 2</option>
                   </select>
@@ -361,7 +385,7 @@
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
-                  <label>Origin Type</label>
+                  <label>Destination Type</label>
                   <select class="form-control select2" id="destination_origin_type">
                     <option>Type 1</option>
                     <option>Type 2</option>
@@ -378,7 +402,7 @@
               <div class="col">
                 <div class="form-group">
                   <label>Destination Address</label>
-                  <input type="text" id="origin_address1" class="form-control">
+                  <input type="text" id="destination_address1_txt" class="form-control">
                 </div>  
               </div>
             </div>
@@ -386,7 +410,7 @@
               <div class="col">
                 <div class="form-group">
                   <label>Destination Address 2</label>
-                  <input type="text" id="origin_address2" class="form-control">
+                  <input type="text" id="destination_address2_txt" class="form-control">
                 </div>  
               </div>
             </div>
@@ -394,13 +418,13 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Destination City</label>
-                  <input type="text" id="origin_city" class="form-control">
+                  <input type="text" id="destination_city_txt" class="form-control">
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Destination State</label>
-                  <input type="text" id="origin_state" class="form-control">
+                  <input type="text" id="destination_state_txt" class="form-control">
                 </div>  
               </div>
             </div>
@@ -408,13 +432,13 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Destination Postal Code</label>
-                  <input type="text" id="origin_city" class="form-control">
+                  <input type="text" id="destination_postal_code_txt" class="form-control">
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Destination Country</label>
-                  <input type="text" id="origin_state" class="form-control">
+                  <input type="text" id="destination_country_txt" class="form-control">
                 </div>  
               </div>
             </div>
@@ -422,13 +446,13 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Destination Contact Name</label>
-                  <input type="text" id="origin_city" class="form-control">
+                  <input type="text" id="destination_contact_name_txt" class="form-control">
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Destination Contact Phone 1</label>
-                  <input type="text" id="origin_state" class="form-control">
+                  <input type="text" id="destination_contact_phone1_txt" class="form-control">
                 </div>  
               </div>
             </div>
@@ -436,13 +460,13 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Destination Contact Email</label>
-                  <input type="text" id="origin_city" class="form-control">
+                  <input type="text" id="destination_email_txt" class="form-control">
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Destination Contact Phone2</label>
-                  <input type="text" id="origin_state" class="form-control">
+                  <input type="text" id="destination_contact_phone2_txt" class="form-control">
                 </div>  
               </div>
             </div>
@@ -450,13 +474,13 @@
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Destination Contact Phone Cell</label>
-                  <input type="text" id="origin_city" class="form-control">
+                  <input type="text" id="destination_contact_phone_cell_txt" class="form-control">
                 </div>  
               </div>
               <div class="col-sm-6">
                 <div class="form-group">
                   <label>Destination Company Name</label>
-                  <input type="text" id="origin_state" class="form-control">
+                  <input type="text" id="destination_company_name_txt" class="form-control">
                 </div>  
               </div>
             </div>

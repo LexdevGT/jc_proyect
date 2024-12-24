@@ -130,7 +130,7 @@
          <div class="col">
            <div class="card">
               <div class="card-header">
-                <h3 class="card-title">ORDER ####</h3>
+                <h3 class="card-title">ORDER #<span id="order_view_idOrder" style="color: blue;"><b>###</b></span></h3>
               </div>
               <!-- /.card-header -->
               <div class="card-body">
@@ -160,7 +160,7 @@
                     <label>Order Created</label>
                   </div>
                   <div class="form-group">
-                    <input type="text" id="order_status" class="form-control" disabled="" value="08/02/2021">
+                    <input type="text" id="order-created" class="form-control" disabled="" >
                   </div>  
                 </div>
                 <div class="row">
@@ -177,12 +177,12 @@
                   </div>
                   <div class="col-sm">
                     <div class="form-group">
-                      <select class="form-control select2" id="transport_type">
-                        <option>Enclosed</option>
+                      <select class="form-control select2" id="transport-type">
+                        <!--<option>Enclosed</option>
                         <option>Driveaway</option>
                         <option>Other</option>
                         <option>DD</option>
-                        <option>SDL</option>
+                        <option>SDL</option>-->
                       </select>
                     </div> 
                   </div>
@@ -636,6 +636,8 @@
     $('.nav-link').removeClass('active');
     $('.nav-link').find('i.fa-search').parent().addClass( "active" );
   }, 1200);
+
+  load_order_view();
 </script>
 </body>
 </html>

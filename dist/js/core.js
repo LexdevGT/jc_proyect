@@ -3,6 +3,11 @@ $(function(){
     setTimeout(
       function(){
         load_sidebar(2);
+        // Añadir event listener para cuando se haga clic en el nombre del usuario
+        $('.user-edit').on('click', function() {
+          let userId = $(this).data('id');    // Obtener el ID del usuario
+          get_user_info(userId);
+        });
       }, 
     150);
 
@@ -107,6 +112,9 @@ $(function(){
     $('#btn-save-insurance-policy').click(function() {
         insurance_policy_save_button();
     });
+
+    
+
 });
 
 function new_function(){
@@ -1001,25 +1009,51 @@ function load_vehicles() {
                 let html = '';
                 response.data.forEach(vehicle => {
                     const checked = vehicle.status == 1 ? 'checked' : '';
-                    html += `
-                        <tr>
-                            <td>${vehicle.id}</td>
-                            <td><a href="#" class="edit-vehicle" data-id="${vehicle.id}">${vehicle.model_year}</a></td>
-                            <td>${vehicle.make}</td>
-                            <td>${vehicle.model}</td>
-                            <td>${vehicle.vehicle_type}</td>
-                            <td>${vehicle.vin}</td>
-                            <td>${vehicle.date_created}</td>
-                            <td>
-                                <div class="form-group">
-                                    <div class="custom-control custom-switch custom-switch-on-success">
-                                        <input type="checkbox" class="custom-control-input vehicle-status" 
-                                               id="customSwitch${vehicle.id}" data-id="${vehicle.id}" ${checked}>
-                                        <label class="custom-control-label" for="customSwitch${vehicle.id}"></label>
+                    console.log(vehicle.link);
+                    if(vehicle.link == null){
+                         html += `
+                            <tr>
+                                <td><a href="#" class="edit-vehicle" data-id="${vehicle.id}">${vehicle.id}</a></td>
+                                <td>${vehicle.model_year}</td>
+                                <td>${vehicle.make}</td>
+                                <td>${vehicle.model}</td>
+                                <td>${vehicle.vehicle_type}</td>
+                                <td>${vehicle.vin}</td>
+                                <td><a href='#' target='_blank'></a></td>
+                                <td>${vehicle.date_created}</td>
+                                <td>
+                                    <div class="form-group">
+                                        <div class="custom-control custom-switch custom-switch-on-success">
+                                            <input type="checkbox" class="custom-control-input vehicle-status" 
+                                                   id="customSwitch${vehicle.id}" data-id="${vehicle.id}" ${checked}>
+                                            <label class="custom-control-label" for="customSwitch${vehicle.id}"></label>
+                                        </div>
                                     </div>
-                                </div>
-                            </td>
-                        </tr>`;
+                                </td>
+                            </tr>`;
+                    }else{
+
+                        html += `
+                            <tr>
+                                <td><a href="#" class="edit-vehicle" data-id="${vehicle.id}">${vehicle.id}</a></td>
+                                <td>${vehicle.model_year}</td>
+                                <td>${vehicle.make}</td>
+                                <td>${vehicle.model}</td>
+                                <td>${vehicle.vehicle_type}</td>
+                                <td>${vehicle.vin}</td>
+                                <td><a href='${vehicle.link}' target='_blank'>${vehicle.link}</a></td>
+                                <td>${vehicle.date_created}</td>
+                                <td>
+                                    <div class="form-group">
+                                        <div class="custom-control custom-switch custom-switch-on-success">
+                                            <input type="checkbox" class="custom-control-input vehicle-status" 
+                                                   id="customSwitch${vehicle.id}" data-id="${vehicle.id}" ${checked}>
+                                            <label class="custom-control-label" for="customSwitch${vehicle.id}"></label>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>`;
+                    }
                 });
 
                 // Destruir DataTable existente si ya está inicializada
@@ -1074,11 +1108,8 @@ function getVehicleInfo(vehicleId) {
                 $('#make').val(vehicle.make);
                 $('#model').val(vehicle.model);
                 $('#vehicle-type').val(vehicle.vehicle_type);
-                $('#is-inop').prop('checked', vehicle.is_inop == 1);
                 $('#notes').val(vehicle.notes);
-                $('#carrier-fee').val('$' + parseFloat(vehicle.carrier_fee).toFixed(2));
-                $('#broker-fee').val('$' + parseFloat(vehicle.broker_fee).toFixed(2));
-                $('#vehicle-tariff').val('$' + parseFloat(vehicle.vehicle_tariff).toFixed(2));
+                $('#vehicle-link').val(vehicle.link);
                 $('#vin').val(vehicle.vin);
                 $('#plate-number').val(vehicle.plate_number);
                 $('#lot-number').val(vehicle.lot_number);
@@ -1126,20 +1157,17 @@ function updateVehicleStatus(vehicleId, newStatus) {
 // Función para guardar o actualizar un vehículo
 function vehicles_save_button() {
     // Obtener los valores monetarios sin el símbolo $
-    const carrierFee = $('#carrier-fee').val().replace('$', '');
-    const brokerFee = $('#broker-fee').val().replace('$', '');
-    const vehicleTariff = $('#vehicle-tariff').val().replace('$', '');
+    //const carrierFee = $('#carrier-fee').val().replace('$', '');
+    //const brokerFee = $('#broker-fee').val().replace('$', '');
+    //const vehicleTariff = $('#vehicle-tariff').val().replace('$', '');
 
     const vehicleData = {
         model_year: $('#model-year').val(),
         make: $('#make').val(),
         model: $('#model').val(),
         vehicle_type: $('#vehicle-type').val(),
-        is_inop: $('#is-inop').is(':checked') ? 1 : 0,
         notes: $('#notes').val(),
-        carrier_fee: carrierFee,
-        broker_fee: brokerFee,
-        vehicle_tariff: vehicleTariff,
+        link: $('#vehicle-link').val(),
         vin: $('#vin').val(),
         plate_number: $('#plate-number').val(),
         lot_number: $('#lot-number').val(),
@@ -1184,16 +1212,10 @@ function clearVehicleForm() {
     $('#model').val('');
     $('#vehicle-type').val('');
     
-    // Limpiar switch de Inop
-    $('#is-inop').prop('checked', false);
     
-    // Limpiar notas
+    // Limpiar notas y link
     $('#notes').val('');
-    
-    // Limpiar campos monetarios
-    $('#carrier-fee').val('$0.00');
-    $('#broker-fee').val('$0.00');
-    $('#vehicle-tariff').val('$0.00');
+    $('#vehicle-link').val('');
     
     // Limpiar información del vehículo
     $('#vin').val('');
@@ -1216,8 +1238,7 @@ function clearVehicleForm() {
     $('#btn-save-vehicle').removeData('vehicle-id');
 }
 
-// Functions for permissions management in core.js
-
+// Functions for permissions management
 function load_roles_for_permissions() {
    $.ajax({
        type: "POST",
@@ -3327,6 +3348,14 @@ function load_users() {
           get_user_info(userId);
         });
 
+        // Añadir event listener para cuando se haga clic en el nombre del usuario
+        $('#DataTables_Table_0_paginate').click(function(){
+            $('.user-edit').click(function(){
+                let userId = $(this).data('id');    // Obtener el ID del usuario
+                get_user_info(userId);
+            });
+        }); 
+
       } else {
         alert(response.error);
       }
@@ -3552,11 +3581,13 @@ function load_sidebar(n = 0) {
     const baseUrl = `${basePath}dist/php/services.php`;
     
     //console.log('Current path:', window.location.pathname);
+    //alert(window.location.pathname);
     //console.log('Base path:', basePath);
     //console.log('Loading sidebar from:', baseUrl);
 
     // Determinar si estamos en dashboard
     const isDashboard = window.location.pathname.endsWith('dashboard.html');
+    const isIndex = window.location.pathname.endsWith('index.html');
     
     $.ajax({
         type: "POST",
@@ -3572,8 +3603,24 @@ function load_sidebar(n = 0) {
         success: function(response) {
             console.log('Sidebar response:', response);
             
+            if (response.error === 'Session expired or not authenticated' && !isIndex) {
+                handleSessionRedirect();
+                console.log(response.redirect);
+                window.location.replace(response.redirect);
+                return;
+            }
+            
+            if (response.error === 'Session expired' && !isIndex) {
+                handleSessionRedirect();
+                console.log(response.redirect);
+                window.location.replace(response.redirect);
+                return;
+            }
+
             if (response.error === 'User session not found') {
                 handleSessionRedirect();
+                console.log(response.redirect);
+                window.location.replace(response.redirect);
                 return;
             }
             
@@ -3582,6 +3629,8 @@ function load_sidebar(n = 0) {
                 $("#left-nav-bar").html(`<div class="text-danger">Error: ${response.error}</div>`);
                 return;
             }
+
+
             
             if (response.data && Array.isArray(response.data)) {
                 const sidebarHtml = generateSidebarHtml(response.data);
