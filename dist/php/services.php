@@ -269,6 +269,14 @@
 			    getOrderInfoFunction();
 			    break;
 
+
+			case 'load_teams_select':
+			    loadTeamsSelectFunction2();
+			    break;
+			case 'get_user_team':
+			    getUserTeamFunction();
+			    break;
+
 		}
 	}
 
@@ -345,6 +353,58 @@
 	        $jsondata['error'] = 'Error executing query: ' . $stmt->error;
 	    }
 	    error_log(print_r($jsondata,true));
+	    echo json_encode($jsondata);
+	}
+
+	function loadTeamsSelectFunction2() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    // Subconsulta para obtener el equipo del usuario asignado
+	    $query = "SELECT DISTINCT t.id, t.name, t.status
+	             FROM teams t
+	             INNER JOIN team_members tm ON t.id = tm.team_id
+	             INNER JOIN users u ON tm.user_id = u.id
+	             WHERE t.status = 1
+	             ORDER BY t.name";
+
+	    $result = $conn->query($query);
+
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading teams: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	// Función adicional para obtener el equipo específico de un usuario
+	function getUserTeamFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+	    
+	    $userId = $_POST['user_id'];
+	    
+	    $query = "SELECT t.id, t.name 
+	              FROM teams t
+	              INNER JOIN team_members tm ON t.id = tm.team_id
+	              WHERE tm.user_id = ? 
+	              AND t.status = 1
+	              LIMIT 1";
+	              
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $userId);
+	    
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching user team: ' . $conn->error;
+	    }
+	    
 	    echo json_encode($jsondata);
 	}
 
@@ -1002,7 +1062,7 @@ function saveInterestedCarrierFunction() {
 	    global $conn;
 	    $jsondata = ['error' => '', 'data' => []];
 
-	    $query = "SELECT id, model_year, make, model, vehicle_type, vin, 
+	    $query = "SELECT id, model_year, make, model, vehicle_type, 
 	              DATE_FORMAT(date_created, '%d-%m-%Y') as date_created, link, status
 	              FROM vehicles 
 	              ORDER BY date_created DESC";
@@ -1082,10 +1142,6 @@ function saveInterestedCarrierFunction() {
 	                    vehicle_type = ?,
 	                    notes = ?,
 	                    link = ?,
-	                    vin = ?,
-	                    plate_number = ?,
-	                    lot_number = ?,
-	                    color = ?,
 	                    weight = ?,
 	                    weight_measure = ?,
 	                    mods = ?,
@@ -1107,10 +1163,6 @@ function saveInterestedCarrierFunction() {
 	            $vehicleType = $vehicleData['vehicle_type'] ?: '';
 	            $notes = $vehicleData['notes'] ?: '';
 	            $link = $vehicleData['link'] ?: '';
-	            $vin = $vehicleData['vin'] ?: '';
-	            $plateNumber = $vehicleData['plate_number'] ?: '';
-	            $lotNumber = $vehicleData['lot_number'] ?: '';
-	            $color = $vehicleData['color'] ?: '';
 	            $weight = $vehicleData['weight'] ?: 0.00;
 	            $weightMeasure = $vehicleData['weight_measure'] ?: 'lbs';
 	            $mods = $vehicleData['mods'] ?: '';
@@ -1120,17 +1172,13 @@ function saveInterestedCarrierFunction() {
 	            $addOn = $vehicleData['add_on'] ?: '';
 
 	            $stmt->bind_param(
-	                "isssssssssdssssssi",
+	                "isssssdssssssi",
 	                $modelYear,
 	                $make,
 	                $model,
 	                $vehicleType,
 	                $notes,
 	                $link,
-	                $vin,
-	                $plateNumber,
-	                $lotNumber,
-	                $color,
 	                $weight,
 	                $weightMeasure,
 	                $mods,
@@ -1145,10 +1193,9 @@ function saveInterestedCarrierFunction() {
 	        } else {
 	            // Insert new vehicle
 	            $query = "INSERT INTO vehicles (
-	                    model_year, make, model, vehicle_type, notes, link, vin, plate_number,
-	                    lot_number, color, weight, weight_measure, mods,
+	                    model_year, make, model, vehicle_type, notes, link, weight, weight_measure, mods,
 	                    vehicle_length, vehicle_width, vehicle_height, add_on, status
-	                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
+	                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)";
 
 	            $stmt = $conn->prepare($query);
 	            if (!$stmt) {
@@ -1162,10 +1209,6 @@ function saveInterestedCarrierFunction() {
 	            $vehicleType = $vehicleData['vehicle_type'] ?: '';
 	            $notes = $vehicleData['notes'] ?: '';
 	            $link = $vehicleData['link'] ?: '';
-	            $vin = $vehicleData['vin'] ?: '';
-	            $plateNumber = $vehicleData['plate_number'] ?: '';
-	            $lotNumber = $vehicleData['lot_number'] ?: '';
-	            $color = $vehicleData['color'] ?: '';
 	            $weight = $vehicleData['weight'] ?: 0.00;
 	            $weightMeasure = $vehicleData['weight_measure'] ?: 'lbs';
 	            $mods = $vehicleData['mods'] ?: '';
@@ -1175,17 +1218,13 @@ function saveInterestedCarrierFunction() {
 	            $addOn = $vehicleData['add_on'] ?: '';
 
 	            $stmt->bind_param(
-	                "isssssssssdssssss",
+	                "isssssdssssss",
 	                $modelYear,
 	                $make,
 	                $model,
 	                $vehicleType,
 	                $notes,
 	                $link,
-	                $vin,
-	                $plateNumber,
-	                $lotNumber,
-	                $color,
 	                $weight,
 	                $weightMeasure,
 	                $mods,

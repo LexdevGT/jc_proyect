@@ -73,7 +73,7 @@ $(function(){
       customer_asigned_to: $('#customer_asigned_to').val(),
       first_available_pickup_date: $('#first_available_pickup_date input').val(),
       transport_type: $('#new_order1_tranport_type').val(),
-      referral_source: $('#referral_source').val(),
+      referral_source: $('#customer-referral-select').val(), //NUEVO CAMBIO PARA GUARDAR EL referral source de la orden
       assigned_user: $('#new_order1_assigned_user').val(),
       assigned_team: $('#new_order1_assigned_team').val()
     };
@@ -1009,7 +1009,7 @@ function load_vehicles() {
                 let html = '';
                 response.data.forEach(vehicle => {
                     const checked = vehicle.status == 1 ? 'checked' : '';
-                    console.log(vehicle.link);
+                    //console.log(vehicle.link);
                     if(vehicle.link == null){
                          html += `
                             <tr>
@@ -1018,7 +1018,6 @@ function load_vehicles() {
                                 <td>${vehicle.make}</td>
                                 <td>${vehicle.model}</td>
                                 <td>${vehicle.vehicle_type}</td>
-                                <td>${vehicle.vin}</td>
                                 <td><a href='#' target='_blank'></a></td>
                                 <td>${vehicle.date_created}</td>
                                 <td>
@@ -1040,7 +1039,6 @@ function load_vehicles() {
                                 <td>${vehicle.make}</td>
                                 <td>${vehicle.model}</td>
                                 <td>${vehicle.vehicle_type}</td>
-                                <td>${vehicle.vin}</td>
                                 <td><a href='${vehicle.link}' target='_blank'>${vehicle.link}</a></td>
                                 <td>${vehicle.date_created}</td>
                                 <td>
@@ -1082,6 +1080,20 @@ function load_vehicles() {
                     const id = $(this).data('id');
                     getVehicleInfo(id);
                 });
+
+                // Añadir event listener para cuando se haga clic en el id del vehiculo
+                $('#vehicles-table_paginate').click(function(){
+                    $('.edit-vehicle').on('click', function(e) {
+                        e.preventDefault();
+                        const id = $(this).data('id');
+                        getVehicleInfo(id);
+                    });
+                    $('.vehicle-status').on('change', function() {
+                        const id = $(this).data('id');
+                        const newStatus = $(this).is(':checked') ? 1 : 0;
+                        updateVehicleStatus(id, newStatus);
+                    });
+                }); 
             } else {
                 alert(response.error);
             }
@@ -1110,10 +1122,6 @@ function getVehicleInfo(vehicleId) {
                 $('#vehicle-type').val(vehicle.vehicle_type);
                 $('#notes').val(vehicle.notes);
                 $('#vehicle-link').val(vehicle.link);
-                $('#vin').val(vehicle.vin);
-                $('#plate-number').val(vehicle.plate_number);
-                $('#lot-number').val(vehicle.lot_number);
-                $('#color').val(vehicle.color);
                 $('#weight').val(vehicle.weight);
                 $('#weight-measure').val(vehicle.weight_measure);
                 $('#mods').val(vehicle.mods);
@@ -1168,10 +1176,6 @@ function vehicles_save_button() {
         vehicle_type: $('#vehicle-type').val(),
         notes: $('#notes').val(),
         link: $('#vehicle-link').val(),
-        vin: $('#vin').val(),
-        plate_number: $('#plate-number').val(),
-        lot_number: $('#lot-number').val(),
-        color: $('#color').val(),
         weight: $('#weight').val(),
         weight_measure: $('#weight-measure').val(),
         mods: $('#mods').val(),
@@ -2307,7 +2311,28 @@ function load_order_view() {
                 
                 // Cargar los selects con los valores seleccionados
                 load_select_transport_type(order.transport_type_id, '#transport-type');
-                load_select_user(order.assigned_user_id);
+                load_select_user(order.assigned_user_id,'#select_assigned_user');
+                load_select_team(order.assigned_user_id)
+                 // Obtener y cargar el equipo del usuario asignado
+                console.log('Antes de entrar al IF');
+                if (order.assigned_user_id) {
+                    console.log('Dentro del IF');
+                    $.ajax({
+                        type: "POST",
+                        url: "../dist/php/services.php",
+                        data: {
+                            option: 'get_user_team',
+                            user_id: order.assigned_user_id
+                        },
+                        dataType: "json",
+                        success: function(teamResponse) {
+                            if (teamResponse.error === '' && teamResponse.data) {
+                                console.log('la id enviada: ' + order.assigned_user_id);
+                                //load_select_team(teamResponse.data.id);
+                            }
+                        }
+                    });
+                }
 
                 // Llenar los campos con los datos disponibles
                 console.log(order.creation_date);
@@ -2497,7 +2522,7 @@ function save_new_order1_and_2(){
   //var finalData = $.extend({}, storedData, newData);
   var finalData = Object.assign({}, formData, newData);
 
-  console.log(finalData);
+  //console.log(finalData);
 
   $.ajax({
     contentType: "application/x-www-form-urlencoded",
@@ -2892,7 +2917,126 @@ function get_new_order_customer_info(customerId) {
   });
 }
 
+// En core.js:
+
+function load_select_team(selectedId = 0, selectElementId = '#customer-team-select') {
+    // Convertir el selectedId a número si es string
+    selectedId = parseInt(selectedId) || 0;
+    
+    $.ajax({
+        contentType: "application/x-www-form-urlencoded",
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'load_teams_select'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let teamHtml = '';
+                
+                // Solo agregar la opción "Select" si no hay ID seleccionado
+                if (selectedId === 0) {
+                    teamHtml += '<option value="" disabled selected>Select a team</option>';
+                }
+                
+                response.data.forEach(team => {
+                    // Asegurarse de que el id sea número para la comparación
+                    const teamId = parseInt(team.id);
+                    
+                    if (team.status == 1) {
+                        teamHtml += `<option value="${teamId}" 
+                            ${selectedId === teamId ? 'selected' : ''}>
+                            ${team.name}
+                        </option>`;
+                    }
+                });
+
+                // Actualizar todos los posibles selects de equipos
+                const possibleSelectIds = [
+                    '#customer-team-select',  // Para new_order1.html
+                    '#select_assigned_team',  // Para order_view.html
+                    '#team-assigned',             // Otro posible ID
+                    selectElementId               // ID personalizado si se proporciona
+                ];
+
+                // Eliminar duplicados y valores vacíos
+                const uniqueSelectIds = [...new Set(possibleSelectIds.filter(id => id))];
+                
+                uniqueSelectIds.forEach(selectId => {
+                    const $select = $(selectId);
+                    if ($select.length) {
+                        $select.html(teamHtml);
+                    }
+                });
+
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function load_select_user(selectedId = 0, selectElementId = '#new_order1_assigned_user') {
+    // Convertir el selectedId a número si es string
+    selectedId = parseInt(selectedId) || 0;
+    
+    $.ajax({
+        contentType: "application/x-www-form-urlencoded",
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'load_users'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let userHtml = '';
+                
+                // Solo agregar la opción "Select" si no hay ID seleccionado
+                if (selectedId === 0) {
+                    userHtml += '<option value="" disabled selected>Select a user</option>';
+                }
+                
+                response.data.forEach(user => {
+                    // Asegurarse de que el id sea número para la comparación
+                    const userId = parseInt(user.id);
+                    
+                    if (user.status == 1) {
+                        userHtml += `<option value="${userId}" 
+                            ${selectedId === userId ? 'selected' : ''}>
+                            ${user.name} 
+                        </option>`;
+                    }
+                });
+
+                // Actualizar todos los posibles selects de usuarios
+                const possibleSelectIds = [
+                    '#new_order1_assigned_user',  // Para new_order1.html
+                    '#assigned-user',             // Para order_view.html
+                    '#user-assigned',             // Otro posible ID
+                    selectElementId               // ID personalizado si se proporciona
+                ];
+
+                // Eliminar duplicados y valores vacíos
+                const uniqueSelectIds = [...new Set(possibleSelectIds.filter(id => id))];
+                
+                uniqueSelectIds.forEach(selectId => {
+                    const $select = $(selectId);
+                    if ($select.length) {
+                        $select.html(userHtml);
+                    }
+                });
+
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
 // Función para cargar SELECT users
+/*
 function load_select_user(id = 0) {
   var userHtml = '';
   var fullName = '';
@@ -2930,6 +3074,7 @@ function load_select_user(id = 0) {
     }
   });
 }
+*/
 
 // Función para cargar SELECT tranport_type
 function load_select_transport_type(selectedId = 0, selectElementId = '#new_order1_tranport_type') {
@@ -3213,7 +3358,7 @@ function users_page_save_button() {
     var weeklyGoal = $('#user-weekly-goal').val();
 
     if (userName === '' || userLastName === '' || userEmail === '' || userRole === null || 
-        startDate === '' || endDate === '' || weeklyGoal === '') {
+        startDate === '' || weeklyGoal === '') {
         alert('All fields must be filled!');
         return;
     }
@@ -3342,7 +3487,7 @@ function load_users() {
           updateUserStatus(userId, newStatus);
         });
 
-        // Añadir event listener para cuando se haga clic en el nombre del rol
+        // Añadir event listener para cuando se haga clic en el nombre del usuario
         $('.user-edit').on('click', function() {
           let userId = $(this).data('id');    // Obtener el ID del usuario
           get_user_info(userId);
@@ -3353,6 +3498,14 @@ function load_users() {
             $('.user-edit').click(function(){
                 let userId = $(this).data('id');    // Obtener el ID del usuario
                 get_user_info(userId);
+            });
+
+            $('.user-status').on('change', function() {
+              let userId = $(this).data('id');   // Obtener el ID del usuario
+              let newStatus = $(this).is(':checked') ? 1 : 0;  // Obtener el nuevo estado
+
+              // Llamar a la función para actualizar el estado
+              updateUserStatus(userId, newStatus);
             });
         }); 
 
@@ -3588,6 +3741,7 @@ function load_sidebar(n = 0) {
     // Determinar si estamos en dashboard
     const isDashboard = window.location.pathname.endsWith('dashboard.html');
     const isIndex = window.location.pathname.endsWith('index.html');
+    const isRoot = window.location.pathname.endsWith('/');
     
     $.ajax({
         type: "POST",
@@ -3601,23 +3755,28 @@ function load_sidebar(n = 0) {
             $("#left-nav-bar").html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading menu...</div>');
         },
         success: function(response) {
-            console.log('Sidebar response:', response);
+            //alert('Es index: '+ isIndex);
+            //alert('Es root: '+ isRoot);
+            //console.log('Sidebar response:', response);
             
-            if (response.error === 'Session expired or not authenticated' && !isIndex) {
+            if (response.error === 'Session expired or not authenticated' && !isIndex && !isRoot) {
+                //alert('entre al 1');
                 handleSessionRedirect();
                 console.log(response.redirect);
                 window.location.replace(response.redirect);
                 return;
             }
             
-            if (response.error === 'Session expired' && !isIndex) {
+            if (response.error === 'Session expired' && !isIndex && !isRoot) {
+                //alert('entre al 2');
                 handleSessionRedirect();
                 console.log(response.redirect);
                 window.location.replace(response.redirect);
                 return;
             }
 
-            if (response.error === 'User session not found') {
+            if (response.error === 'User session not found' && !isIndex && !isRoot) {
+                //alert('entre al 3');
                 handleSessionRedirect();
                 console.log(response.redirect);
                 window.location.replace(response.redirect);
