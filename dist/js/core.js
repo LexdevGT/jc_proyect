@@ -113,7 +113,20 @@ $(function(){
         insurance_policy_save_button();
     });
 
-    
+    // CALL INTERNAL NOTES MODAL
+    $('#internal-notes-btn').click(function() {
+        internal_notes_new_button();
+    });
+
+    // CALL INTERNAL NOTES SAVE BUTTON IN MODAL
+    $('#save-note-btn').click(function() {
+        internal_notes_modal_save_button();
+    });
+
+    // CALL INTERNAL NOTES LOADING
+    $('#custom-internal-notes-tab').click(function(){
+        load_internal_notes();
+    });
 
 });
 
@@ -146,6 +159,119 @@ function new_function(){
       }    
     });
   }
+}
+
+function updateNoteStatus(noteId, status) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'update_note_status',
+            note_id: noteId,
+            status: status
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+            } else {
+                alert(response.error);
+                // Revert switch if error
+                $(`#noteSwitch${noteId}`).prop('checked', !status);
+            }
+        }
+    });
+}
+
+function load_internal_notes() {
+    const orderId   = $('#order_view_idOrder').text();
+    loadInternalNotes(orderId);
+}
+
+function loadInternalNotes(orderId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'load_internal_notes',
+            order_id: orderId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '<div class="table-responsive"><table class="table table-bordered">';
+                html += '<thead><tr><th>Title</th><th>Note</th><th>Date Created</th><th>Status</th></tr></thead><tbody>';
+                
+                response.data.forEach(note => {
+                    const checked = note.status == 1 ? 'checked' : '';
+                    html += `<tr>
+                        <td>${note.title}</td>
+                        <td>${note.body}</td>
+                        <td>${note.date_created}</td>
+                        <td>
+                            <div class="custom-control custom-switch custom-switch-on-success">
+                                <input type="checkbox" class="custom-control-input note-status" 
+                                    id="noteSwitch${note.id}" data-id="${note.id}" ${checked}>
+                                <label class="custom-control-label" for="noteSwitch${note.id}"></label>
+                            </div>
+                        </td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table></div>';
+                $('#internal-notes-tab').find('.row:eq(1)').html(html);
+
+                // Add event listener for status switches
+                $('.note-status').on('change', function() {
+                    const id = $(this).data('id');
+                    const newStatus = $(this).is(':checked') ? 1 : 0;
+                    updateNoteStatus(id, newStatus);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function internal_notes_modal_save_button(){
+    const title     = $('#note-title').val();
+    const body      = $('#note-body').val();
+    const orderId   = $('#order_view_idOrder').text();
+
+    if (!title || !body) {
+        alert('Please fill in all fields');
+        return;
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_internal_note',
+            order_id: orderId,
+            title: title,
+            body: body
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                $('#internal-notes-modal').modal('hide');
+                loadInternalNotes(orderId);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function internal_notes_new_button(){
+    // Clear form
+    $('#note-title').val('');
+    $('#note-body').val('');
+    // Show modal
+    $('#internal-notes-modal').modal('show');
 }
 
 function load_payments() {
@@ -2312,11 +2438,11 @@ function load_order_view() {
                 // Cargar los selects con los valores seleccionados
                 load_select_transport_type(order.transport_type_id, '#transport-type');
                 load_select_user(order.assigned_user_id,'#select_assigned_user');
-                load_select_team(order.assigned_user_id)
+               
                  // Obtener y cargar el equipo del usuario asignado
-                console.log('Antes de entrar al IF');
+                
                 if (order.assigned_user_id) {
-                    console.log('Dentro del IF');
+                    
                     $.ajax({
                         type: "POST",
                         url: "../dist/php/services.php",
@@ -2326,16 +2452,19 @@ function load_order_view() {
                         },
                         dataType: "json",
                         success: function(teamResponse) {
+                            
                             if (teamResponse.error === '' && teamResponse.data) {
-                                console.log('la id enviada: ' + order.assigned_user_id);
-                                //load_select_team(teamResponse.data.id);
+                                load_select_team(teamResponse.data.id, '#select_assigned_team');
+                                
+                            }else{
+                                load_select_team(0, '#select_assigned_team');
                             }
                         }
                     });
                 }
 
                 // Llenar los campos con los datos disponibles
-                console.log(order.creation_date);
+                //console.log(order.creation_date);
                 $('#order-created').val(order.creation_date);
                 $('#order-status').val(order.status);
                 $('#first-available-pickup-date').val(order.pickup_date);
@@ -2923,12 +3052,13 @@ function load_select_team(selectedId = 0, selectElementId = '#customer-team-sele
     // Convertir el selectedId a número si es string
     selectedId = parseInt(selectedId) || 0;
     
+    //console.log('selectedId: ' + selectedId + ' selectElementId: ' + selectElementId);
     $.ajax({
         contentType: "application/x-www-form-urlencoded",
         type: "POST",
         url: "../dist/php/services.php",
         data: {
-            option: 'load_teams_select'
+            option: 'load_teams_select2'
         },
         dataType: "json",
         success: function(response) {
@@ -2943,13 +3073,14 @@ function load_select_team(selectedId = 0, selectElementId = '#customer-team-sele
                 response.data.forEach(team => {
                     // Asegurarse de que el id sea número para la comparación
                     const teamId = parseInt(team.id);
-                    
+                
                     if (team.status == 1) {
                         teamHtml += `<option value="${teamId}" 
                             ${selectedId === teamId ? 'selected' : ''}>
                             ${team.name}
                         </option>`;
                     }
+           
                 });
 
                 // Actualizar todos los posibles selects de equipos

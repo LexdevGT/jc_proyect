@@ -270,11 +270,21 @@
 			    break;
 
 
-			case 'load_teams_select':
+			case 'load_teams_select2':
 			    loadTeamsSelectFunction2();
 			    break;
 			case 'get_user_team':
 			    getUserTeamFunction();
+			    break;
+
+			case 'save_internal_note':
+			    saveInternalNoteFunction();
+			    break;
+			case 'load_internal_notes':
+			    loadInternalNotesFunction();
+			    break;
+			case 'update_note_status':
+			    updateNoteStatusFunction();
 			    break;
 
 		}
@@ -300,6 +310,77 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function updateNoteStatusFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    $noteId = $_POST['note_id'];
+	    $status = $_POST['status'];
+
+	    $query = "UPDATE internal_notes SET status = ? WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("ii", $status, $noteId);
+
+	    if ($stmt->execute()) {
+	        $jsondata['message'] = 'Note status updated successfully!';
+	    } else {
+	        $jsondata['error'] = 'Error updating note status: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function loadInternalNotesFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $orderId = $_POST['order_id'];
+
+	    $query = "SELECT id, title, body, 
+	              DATE_FORMAT(date_created, '%d-%m-%Y %H:%i') as date_created, 
+	              status 
+	              FROM internal_notes 
+	              WHERE order_id = ? 
+	              ORDER BY date_created DESC";
+	    
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $orderId);
+
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading notes: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function saveInternalNoteFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    $orderId = $_POST['order_id'];
+	    $title = $_POST['title'];
+	    $body = $_POST['body'];
+
+	    $query = "INSERT INTO internal_notes (order_id, title, body) 
+	              VALUES (?, ?, ?)";
+	    
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("iss", $orderId, $title, $body);
+
+	    if ($stmt->execute()) {
+	        $jsondata['message'] = 'Note saved successfully!';
+	    } else {
+	        $jsondata['error'] = 'Error saving note: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
 	}
 
 	function getOrderInfoFunction() {
@@ -352,7 +433,7 @@
 	    } else {
 	        $jsondata['error'] = 'Error executing query: ' . $stmt->error;
 	    }
-	    error_log(print_r($jsondata,true));
+	    //error_log(print_r($jsondata,true));
 	    echo json_encode($jsondata);
 	}
 
@@ -387,6 +468,7 @@
 	    $jsondata = ['error' => '', 'data' => null];
 	    
 	    $userId = $_POST['user_id'];
+	    //error_log($userId);
 	    
 	    $query = "SELECT t.id, t.name 
 	              FROM teams t
@@ -394,7 +476,7 @@
 	              WHERE tm.user_id = ? 
 	              AND t.status = 1
 	              LIMIT 1";
-	              
+	    
 	    $stmt = $conn->prepare($query);
 	    $stmt->bind_param("i", $userId);
 	    
@@ -405,6 +487,7 @@
 	        $jsondata['error'] = 'Error fetching user team: ' . $conn->error;
 	    }
 	    
+	//error_log(print_r($jsondata,true));
 	    echo json_encode($jsondata);
 	}
 

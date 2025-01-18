@@ -538,10 +538,7 @@
                   <div class="tab-pane fade" id="internal-notes-tab" role="tabpanel" aria-labelledby="internal-notes-tab">
                     <div class="row">
                       <div class="col-sm-1">
-                        <button class="btn btn-dark">+ NEW</button>
-                      </div>
-                      <div class="col-sm-1">
-                        <button class="btn btn-dark">EDIT</button>
+                        <button class="btn btn-dark" id="internal-notes-btn">+ NEW</button>
                       </div>
                     </div>
                     <div class="row">
@@ -584,6 +581,34 @@
       </div><!-- /.container-fluid -->
     </section>
     <!-- /.content -->
+      <div class="modal fade" id="internal-notes-modal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Internal Note</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="internal-notes-form">
+                        <div class="form-group">
+                            <label for="note-title">Title</label>
+                            <input type="text" class="form-control" id="note-title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="note-body">Note</label>
+                            <textarea class="form-control" id="note-body" rows="4" required></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="save-note-btn">Save Note</button>
+                </div>
+            </div>
+        </div>
+    </div>
   </div>
   <!-- /.content-wrapper -->
   <footer class="main-footer">
