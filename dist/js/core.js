@@ -128,6 +128,13 @@ $(function(){
         load_internal_notes();
     });
 
+    // CALL ORDER VIEW SAVE BUTTON
+    $('#btn-save-order').on('click', saveOrderFunction);
+
+    // CALL ORDER VIEW VEHICLES MODAL
+    $('#vehicles-btn-new').click(function(){
+        order_vehicles_new_button();
+    })
 });
 
 function new_function(){
@@ -159,6 +166,78 @@ function new_function(){
       }    
     });
   }
+}
+
+function saveOrderFunction() {
+    const orderId = $('#order_view_idOrder').text();
+    
+    // Gather all form data
+    const orderData = {
+        // Status and Assignment
+        order_status: $('#order_status').val(),
+        transport_type_id: $('#transport-type').val(),
+        shipment_first_avalilable_pickup_date: $('#first_available_pickup_date input').val(),
+        referral_source_id: $('#referral-source').val(),
+        assigned_user_id: $('#select_assigned_user').val(),
+        assigned_team_id: $('#select_assigned_team').val(),
+        
+        // Financial Information
+        total_tariff: $('#total_tariff').val().replace('$', '').trim(),
+        carrier_pay: $('#carrier_pay').val().replace('$', '').trim(),
+        carrier_pay_terms: $('#select_carrier_pay').val(),
+        broker_fee: $('#broker_pay').val().replace('$', '').trim(),
+        broker_fee_terms: $('#broker_fee_terms').val(),
+        wrecker_fee: $('#wrecker_pay').val().replace('$', '').trim(),
+        other_fee: $('#other_pay').val().replace('$', '').trim(),
+        special_terms: $('#special_terms').val()
+    };
+
+    // Validate required fields
+    /*
+    if (!orderData.order_status || !orderData.transport_type_id) {
+        alert('Please fill in all required fields!');
+        return;
+    }
+    */
+
+    // Convert currency strings to numbers
+    const currencyFields = ['total_tariff', 'carrier_pay', 'broker_fee', 'wrecker_fee', 'other_fee'];
+    currencyFields.forEach(field => {
+        if (orderData[field]) {
+            orderData[field] = parseFloat(orderData[field]) || 0;
+        }
+    });
+
+    // Format date if present
+    if (orderData.shipment_first_avalilable_pickup_date) {
+        orderData.shipment_first_avalilable_pickup_date = moment(
+            orderData.shipment_first_avalilable_pickup_date, 
+            'MM/DD/YYYY'
+        ).format('YYYY-MM-DD');
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_order',
+            order_id: orderId,
+            order_data: JSON.stringify(orderData)
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                // Optionally reload order data
+                load_order_view();
+            } else {
+                alert(response.error);
+            }
+        },
+        error: function(xhr, status, error) {
+            alert('Error saving order: ' + error);
+        }
+    });
 }
 
 function updateNoteStatus(noteId, status) {
@@ -272,6 +351,16 @@ function internal_notes_new_button(){
     $('#note-body').val('');
     // Show modal
     $('#internal-notes-modal').modal('show');
+}
+
+function order_vehicles_new_button(){
+    // Clear form
+    $('#order-modal-input-modelyear').val('');
+    $('#order-modal-input-make').val('');
+    $('#order-modal-input-model').val('');
+    $('#order-modal-input-type').val('');
+    // Show modal
+    $('#vehicles-modal').modal('show');
 }
 
 function load_payments() {
@@ -2387,6 +2476,7 @@ function load_companies() {
 }
 
 function load_select_referral_sources(selectedId = 0) {
+    selectedId = parseInt(selectedId) || 0;
     $.ajax({
         type: "POST",
         url: "../dist/php/services.php",
@@ -2398,9 +2488,12 @@ function load_select_referral_sources(selectedId = 0) {
             if (response.error === '') {
                 let html = '<option value="" disabled selected>Select a referral source</option>';
                 response.data.forEach(source => {
-                    if (selectedId !== 0 && selectedId === source.id) {
+                
+                    if (selectedId !== 0 && selectedId == source.id) {
+                       
                         html += `<option value="${source.id}" selected>${source.name}</option>`;
                     } else {
+                        
                         html += `<option value="${source.id}">${source.name}</option>`;
                     }
                 });
@@ -2412,6 +2505,108 @@ function load_select_referral_sources(selectedId = 0) {
     });
 }
 
+function load_order_view() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const orderId = urlParams.get('id');
+    
+    if (!orderId) {
+        alert('No order ID specified');
+        return;
+    } else {
+        $('#order_view_idOrder').html(orderId);
+    }
+    
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_order_info',
+            order_id: orderId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const order = response.data;
+                
+                // Cargar los selects con los valores seleccionados
+                load_select_transport_type(order.transport_type_id, '#transport-type');
+                load_select_user(order.assigned_user_id,'#select_assigned_user');
+                load_select_referral_sources(order.order_referral_source_id);
+               
+                // Obtener y cargar el equipo del usuario asignado
+                if (order.assigned_user_id) {
+                    $.ajax({
+                        type: "POST",
+                        url: "../dist/php/services.php",
+                        data: {
+                            option: 'get_user_team',
+                            user_id: order.assigned_user_id
+                        },
+                        dataType: "json",
+                        success: function(teamResponse) {
+                            if (teamResponse.error === '' && teamResponse.data) {
+                                load_select_team(teamResponse.data.id, '#select_assigned_team');
+                            } else {
+                                load_select_team(0, '#select_assigned_team');
+                            }
+                        }
+                    });
+                }
+
+                // Llenar los campos con los datos disponibles
+                $('#order-created').val(order.creation_date);
+                $('#order-status').val(order.status);
+                $('#first-available-pickup-date').val(order.pickup_date);
+                
+                // Información financiera
+                $('#total_tariff').val('$' + order.total_tariff);
+                $('#carrier_pay').val('$' + order.carrier_pay);
+                $('#select_carrier_pay').val(order.carrier_pay_terms).trigger('change');;
+                $('#broker_pay').val('$' + order.broker_fee);
+                $('#broker_fee_terms').val(order.broker_fee_terms).trigger('change');;
+                $('#wrecker_pay').val('$' + order.wrecker_fee);
+                $('#other_pay').val('$' + order.other_fee);
+                $('#special_terms').val(order.special_terms);
+                
+                // Información del cliente
+                $('#customer-name').text(order.customer_name || '');
+                $('#customer-phone').text(order.customer_phone || '');
+                $('#customer-email').text(order.customer_email || '');
+                
+                // Información de origen
+                $('#origin-contact').text(order.origin_contact_name || '');
+                $('#origin-address').text(order.origin_address || '');
+                $('#origin-city').text(order.origin_city || '');
+                $('#origin-state').text(order.origin_state || '');
+                $('#origin-postal-code').text(order.origin_contact_postal_code || '');
+                
+                // Información de destino
+                $('#destination-contact').text(order.destination_contact_name || '');
+                $('#destination-address').text(order.destination_address || '');
+                $('#destination-city').text(order.destination_city || '');
+                $('#destination-state').text(order.destination_state || '');
+                $('#destination-postal-code').text(order.destination_contact_postal_code || '');
+
+                // Información del cliente (campos deshabilitados)
+                $('#customer_name').val(order.customer_name || '').prop('disabled', true);
+                $('#customer_phone').val(order.customer_phone || '').prop('disabled', true);
+                $('#customer_email').val(order.customer_email || '').prop('disabled', true);
+                $('#saved_cc').val(order.customer_saved_cc || '').prop('disabled', true);
+                
+                // Mantener el select del cliente deshabilitado también si existe
+                $('#select_customer').val(order.customer_name).prop('disabled', true).trigger('change');
+                
+            } else {
+                alert(response.error);
+            }
+        },
+        error: function(xhr, status, error) {
+            alert('Error loading order data: ' + error);
+        }
+    });
+}
+
+/*
 function load_order_view() {
     const urlParams = new URLSearchParams(window.location.search);
     const orderId = urlParams.get('id');
@@ -2438,6 +2633,8 @@ function load_order_view() {
                 // Cargar los selects con los valores seleccionados
                 load_select_transport_type(order.transport_type_id, '#transport-type');
                 load_select_user(order.assigned_user_id,'#select_assigned_user');
+                console.log('Referral Source ID: '+order.order_referral_source_id);
+                load_select_referral_sources(order.order_referral_source_id);
                
                  // Obtener y cargar el equipo del usuario asignado
                 
@@ -2497,7 +2694,7 @@ function load_order_view() {
         }
     });
 }
-
+*/
 
 // Función para cargar los datos de global search al iniciar.
 function load_global_search() {
@@ -2541,56 +2738,6 @@ function load_global_search() {
         }
     });
 }
-
-/*
-function load_global_search() {
-
-   // Inicializamos la tabla
-  let table = $('#example1').DataTable({
-    "responsive": true,
-    "lengthChange": false,
-    "autoWidth": false,
-    "buttons": ["csv", "excel", "pdf", "print", "colvis"]
-  });
-
-  $.ajax({
-    contentType: "application/x-www-form-urlencoded",
-    type: "POST",
-    url: "../dist/php/services.php",
-    data: {
-      option: 'load_global_search'
-    },
-    dataType: "json",
-    beforeSend: function (){
-      $('.loader').show();
-    },
-    success: function(response) {
-      if (response.error === '') {
-        // Limpiamos cualquier dato existente en la tabla
-        table.clear().draw();
-
-        // Iteramos sobre los datos recibidos y los agregamos a la tabla
-        response.data.forEach(function (order) {
-          table.row.add([
-            `<a href="order_view.html">${order.id}</a>`,
-            order.type,
-            order.date_created,
-            order.status,
-            order.customer_name,
-            order.phone,
-            order.customer_email,
-            order.customer_vehicles
-          ]).draw(false);
-        });
-
-        // Volvemos a inicializar los botones (CSV, Excel, etc.)
-        table.buttons().container().appendTo('#example1_wrapper .col-md-6:eq(0)');
-        $('.loader').hide();
-      }
-    }
-  });
-}
-*/
 
 function save_new_order1_and_2(){
   // Recuperar los datos de sessionStorage
@@ -2890,58 +3037,6 @@ function decodeTildes(text) {
         .replace(/Ã\u0093/g, 'Ó')
         .replace(/Ã\u009a/g, 'Ú');
 }
-
-// Función para cargar SELECT city
-/*
-function load_select_city(id = 0) {
-  var cityHtml = '';
-
-  $.ajax({
-    contentType: "application/x-www-form-urlencoded",
-    type: "POST",
-    url: "../dist/php/services.php",
-    data: {
-      option: 'load_zip_codes'
-    },
-    dataType: "json",
-    success: function(response) {
-      //console.log(response);  // Añade esto para ver la respuesta completa
-      if (response.error === '') {
-
-        if (id === 0){
-          cityHtml += '<option value="" disabled selected>Select a city</option>';
-        }
-        response.data.forEach(zipcode => {
-
-          if (id !== 0 && id === zipcode.zip){
-            cityHtml += '<option value="'+zipcode.zip+'" selected>'+decodeTildes(zipcode.city)+'</option>';  
-          }else{
-            cityHtml += '<option value="'+zipcode.zip+'">'+decodeTildes(zipcode.city)+'</option>';
-          }
-          
-        });
-        $('#city_origin').html(cityHtml);
-        $('#city_origin').change(function(){
-          get_origin_city($('#city_origin').val());
-          get_origin_state($('#city_origin').val());
-          get_origin_zip_code($('#city_origin').val());
-          get_origin_country($('#city_origin').val());
-        });
-        $('#destination_city').html(cityHtml);
-        $('#destination_city').change(function(){
-          get_destination_city($('#destination_city').val());
-          get_destination_state($('#destination_city').val());
-          get_destination_zip_code($('#destination_city').val());
-          get_destination_country($('#destination_city').val());
-        });
-
-      } else {
-        alert(response.error);
-      }
-    }
-  });
-}
-*/
 
 // Función para cargar SELECT zip codes
 

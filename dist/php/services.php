@@ -139,6 +139,21 @@
 		    case 'load_interested_carriers':
 		        loadInterestedCarriersFunction();
 		        break;
+		    case 'load_insurance_policies':
+			    loadInsurancePoliciesFunction();
+			    break;
+			case 'load_insurance_policies_select':
+			    loadInsurancePoliciesSelectFunction();
+			    break;
+			case 'load_payments':
+			    loadPaymentsFunction();
+			    break;
+			case 'load_teams_select2':
+			    loadTeamsSelectFunction2();
+			    break;
+			case 'load_internal_notes':
+			    loadInternalNotesFunction();
+			    break;
 			case 'update_role_status':
 				updateRoleStatusFunction();
 				break;
@@ -178,6 +193,15 @@
 		    case 'save_interested_carrier':
 		        saveInterestedCarrierFunction();
 		        break;
+		    case 'save_insurance_policy':
+			    saveInsurancePolicyFunction();
+			    break;
+			case 'save_payment':
+			    savePaymentFunction();
+			    break;
+			case 'save_internal_note':
+			    saveInternalNoteFunction();
+			    break;
 			case 'update_user':
 				updateUserFunction();
 				break;	
@@ -199,6 +223,15 @@
 		    case 'update_interested_carrier_status':
 		        updateInterestedCarrierStatusFunction();
 		        break;
+		    case 'update_policy_status':
+			    updatePolicyStatusFunction();
+			    break;
+			case 'update_payment_status':
+			    updatePaymentStatusFunction();
+			    break;
+			case 'update_note_status':
+			    updateNoteStatusFunction();
+			    break;
 			case 'get_user_info':
 				getUserInfoFunction();
 				break;
@@ -235,56 +268,22 @@
 			case 'get_interested_carrier_info':
 		        getInterestedCarrierInfoFunction();
 		        break;
-
-	        case 'load_insurance_policies':
-			    loadInsurancePoliciesFunction();
-			    break;
-			case 'get_policy_info':
+		    case 'get_policy_info':
 			    getPolicyInfoFunction();
 			    break;
-			case 'save_insurance_policy':
-			    saveInsurancePolicyFunction();
-			    break;
-			case 'update_policy_status':
-			    updatePolicyStatusFunction();
-			    break;
-			case 'load_insurance_policies_select':
-			    loadInsurancePoliciesSelectFunction();
-			    break;
-
-			case 'load_payments':
-			    loadPaymentsFunction();
-			    break;
-			case 'save_payment':
-			    savePaymentFunction();
-			    break;
-			case 'get_payment_info':
+	        case 'get_payment_info':
 			    getPaymentInfoFunction();
 			    break;
-			case 'update_payment_status':
-			    updatePaymentStatusFunction();
-			    break;
-
 			case 'get_order_info':
 			    getOrderInfoFunction();
-			    break;
-
-
-			case 'load_teams_select2':
-			    loadTeamsSelectFunction2();
 			    break;
 			case 'get_user_team':
 			    getUserTeamFunction();
 			    break;
 
-			case 'save_internal_note':
-			    saveInternalNoteFunction();
-			    break;
-			case 'load_internal_notes':
-			    loadInternalNotesFunction();
-			    break;
-			case 'update_note_status':
-			    updateNoteStatusFunction();
+
+			case 'save_order':
+			    saveOrderFunction();
 			    break;
 
 		}
@@ -311,6 +310,73 @@
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
 	}
+
+	function saveOrderFunction() {
+    global $conn;
+    $jsondata = ['error' => '', 'message' => ''];
+
+    try {
+        $orderId = $_POST['order_id'];
+        $orderData = json_decode($_POST['order_data'], true);
+
+        // Start transaction
+        $conn->begin_transaction();
+
+        // Update order table
+        $query = "UPDATE orders SET 
+                status = ?,
+                transport_type_id = ?,
+                shipment_first_avalilable_pickup_date = ?,
+                order_referral_source_id = ?,
+                assigned_user_id = ?,
+                total_tariff = ?,
+                carrier_pay = ?,
+                carrier_pay_terms = ?,
+                broker_fee = ?,
+                broker_fee_terms = ?,
+                wrecker_fee = ?,
+                other_fee = ?,
+                special_terms = ?
+                WHERE id = ?";
+
+        $stmt = $conn->prepare($query);
+        if (!$stmt) {
+            throw new Exception("Error preparing statement: " . $conn->error);
+        }
+
+        $stmt->bind_param(
+            "sissiddsdsddsi",
+            $orderData['order_status'],
+            $orderData['transport_type_id'],
+            $orderData['shipment_first_avalilable_pickup_date'],
+            $orderData['referral_source_id'],
+            $orderData['assigned_user_id'],
+            $orderData['total_tariff'],
+            $orderData['carrier_pay'],
+            $orderData['carrier_pay_terms'],
+            $orderData['broker_fee'],
+            $orderData['broker_fee_terms'],
+            $orderData['wrecker_fee'],
+            $orderData['other_fee'],
+            $orderData['special_terms'],
+            $orderId
+        );
+
+        if (!$stmt->execute()) {
+            throw new Exception("Error executing update: " . $stmt->error);
+        }
+
+        // Commit transaction
+        $conn->commit();
+        $jsondata['message'] = 'Order updated successfully!';
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        $jsondata['error'] = 'Error: ' . $e->getMessage();
+    }
+
+    echo json_encode($jsondata);
+}
 
 	function updateNoteStatusFunction() {
 	    global $conn;
@@ -390,19 +456,28 @@
 	    $orderId = $_POST['order_id'];
 	    
 	    $query = "SELECT o.*, 
-				  DATE_FORMAT(o.shipment_first_avalilable_pickup_date, '%Y-%m-%d') as pickup_date,
-				  tt.id as transport_type_id,
-				  tt.name as transport_type_name,
-				  CONCAT(u.name, ' ', u.last_name) as assigned_user_name,
-				  CONCAT(c.first_name,' ',c.last_name) as customer_name,
-				  c.phone1 as customer_phone,
-				  c.email1 as customer_email,
-				  o.order_date_created as creation_date
-				  FROM orders o
-				  LEFT JOIN transport_type tt ON o.transport_type_id = tt.id
-				  LEFT JOIN users u ON o.assigned_user_id = u.id
-				  LEFT JOIN customers c ON o.id_customer = c.id
-				  WHERE o.id = ?";
+              DATE_FORMAT(o.shipment_first_avalilable_pickup_date, '%Y-%m-%d') as pickup_date,
+              tt.id as transport_type_id,
+              tt.name as transport_type_name,
+              CONCAT(u.name, ' ', u.last_name) as assigned_user_name,
+              CONCAT(c.first_name,' ',c.last_name) as customer_name,
+              c.phone1 as customer_phone,
+              c.email1 as customer_email,
+              c.email2 as customer_saved_cc,
+              o.order_date_created as creation_date,
+              o.total_tariff,
+              o.carrier_pay,
+              o.carrier_pay_terms,
+              o.broker_fee,
+              o.broker_fee_terms,
+              o.wrecker_fee,
+              o.other_fee,
+              o.special_terms
+              FROM orders o
+              LEFT JOIN transport_type tt ON o.transport_type_id = tt.id
+              LEFT JOIN users u ON o.assigned_user_id = u.id
+              LEFT JOIN customers c ON o.id_customer = c.id
+              WHERE o.id = ?";
 	              
 	    $stmt = $conn->prepare($query);
 	    if (!$stmt) {
@@ -419,6 +494,13 @@
 	            // Agregar datos directos de la consulta
 	            $jsondata['data'] = $row;
 	            
+	            // Formatear campos monetarios
+	            $jsondata['data']['total_tariff'] = number_format($row['total_tariff'], 2);
+	            $jsondata['data']['carrier_pay'] = number_format($row['carrier_pay'], 2);
+	            $jsondata['data']['broker_fee'] = number_format($row['broker_fee'], 2);
+	            $jsondata['data']['wrecker_fee'] = number_format($row['wrecker_fee'], 2);
+	            $jsondata['data']['other_fee'] = number_format($row['other_fee'], 2);
+	            
 	            // Agregar campos calculados o estáticos si son necesarios
 	            $jsondata['data']['order_number'] = sprintf('ORD-%06d', $row['id']);
 	            $jsondata['data']['status_text'] = $row['status'] ? $row['status'] : 'Pending';
@@ -433,7 +515,7 @@
 	    } else {
 	        $jsondata['error'] = 'Error executing query: ' . $stmt->error;
 	    }
-	    //error_log(print_r($jsondata,true));
+	    
 	    echo json_encode($jsondata);
 	}
 

@@ -139,7 +139,14 @@
                     <label>Order Status</label>
                   </div>
                   <div class="form-group">
-                    <input type="text" id="order_status" class="form-control" disabled="" value="Awaiting Customer Signature">
+                    <select class="form-control select2" id="order_status">
+                        <option value="Awaiting customer Signature">Awaiting customer Signature</option>
+                        <option value="Dispatch">Dispatch</option>
+                        <option value="Pick Up">Pick Up</option>
+                        <option value="Deliver">Deliver</option>
+                        <option value="Completed">Completed</option>
+
+                      </select>
                   </div>  
                 </div>
                 <div class="row">
@@ -149,8 +156,7 @@
                   <div class="col-sm">
                     <div class="form-group">
                       <select class="form-control select2" id="secundary_status">
-                        <option>Estatus 1</option>
-                        <option>Estatus 2</option>
+                        <option>...</option>
                       </select>
                     </div> 
                   </div>
@@ -165,24 +171,12 @@
                 </div>
                 <div class="row">
                   <div class="col-sm">
-                    <label>Reference ID</label>
-                  </div>
-                  <div class="form-group">
-                    <input type="text" id="order_status" class="form-control">
-                  </div>  
-                </div>
-                <div class="row">
-                  <div class="col-sm">
                     <label>Transport Type</label>
                   </div>
                   <div class="col-sm">
                     <div class="form-group">
                       <select class="form-control select2" id="transport-type">
-                        <!--<option>Enclosed</option>
-                        <option>Driveaway</option>
-                        <option>Other</option>
-                        <option>DD</option>
-                        <option>SDL</option>-->
+                     
                       </select>
                     </div> 
                   </div>
@@ -208,9 +202,8 @@
                   </div>
                   <div class="col-sm">
                     <div class="form-group">
-                      <select class="form-control select2" id="select_referral_source">
-                        <option>Source 1</option>
-                        <option>Source 2</option>
+                      <select class="form-control select2" id="referral-source">
+                        <option>Loading referral source...</option>
                       </select>
                     </div> 
                   </div>
@@ -222,9 +215,7 @@
                   <div class="col-sm">
                     <div class="form-group">
                       <select class="form-control select2" id="select_assigned_user">
-                        <option>User 1</option>
-                        <option>user 2</option>
-                        <option>user 3</option>
+                        <option>Loading users...</option>
                       </select>
                     </div> 
                   </div>
@@ -236,9 +227,7 @@
                   <div class="col-sm">
                     <div class="form-group">
                       <select class="form-control select2" id="select_assigned_team">
-                        <option>User 1</option>
-                        <option>user 2</option>
-                        <option>user 3</option>
+                        <option>Loading Teams...</option>
                       </select>
                     </div> 
                   </div>
@@ -284,7 +273,7 @@
                 </div>
                 <div class="row">
                   <div class="col-sm">
-                    <label>Carrier Pay</label>
+                    <label>Carrier Pay Terms</label>
                   </div>
                   <div class="col-sm">
                     <div class="form-group">
@@ -293,7 +282,7 @@
                         <option>COD - Check</option>
                         <option>COP - Cash</option>
                         <option>COP - Check</option>
-                        <option>COmplex Terms</option>
+                        <option>Complex Terms</option>
                       </select>
                     </div> 
                   </div>
@@ -317,7 +306,7 @@
                         <option>Charge on Dispatch</option>
                         <option>Charge on Pickup</option>
                         <option>Charge on Delivery</option>
-                        <option>Shiper Invvoice</option>
+                        <option>Shipper Invoice</option>
                       </select>
                     </div> 
                   </div>
@@ -354,13 +343,14 @@
          </div>
          <!-- /. col -->
           <!-- START COL -->
-         <div class="col">
+         <div class="col ">
           <div class="row">
            <div class="card col">
               <div class="card-header">
                 <h3 class="card-title">CUSTOMER</h3>
               </div>
               <!-- /.card-header -->
+              <!--
               <div class="card-body">
                 <div class="row">
                   <div class="col-sm">
@@ -400,29 +390,52 @@
                     <input type="text" id="saved_cc" class="form-control">
                   </div>  
                 </div>
-              </div>
+              </div>-->
+              <div class="card-body">
+                <div class="row">
+                    <div class="col-sm">
+                        <label>Name</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="customer_name" class="form-control" disabled>
+                    </div>  
+                </div>
+                <div class="row">
+                    <div class="col-sm">
+                        <label>Phone</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="customer_phone" class="form-control" disabled>
+                    </div>  
+                </div>
+                <div class="row">
+                    <div class="col-sm">
+                        <label>Email</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="customer_email" class="form-control" disabled>
+                    </div>  
+                </div>
+                <div class="row">
+                    <div class="col-sm">
+                        <label>Saved CC</label>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="saved_cc" class="form-control" disabled>
+                    </div>  
+                </div>
+            </div>
               <!-- /.card-body -->
             </div>
             <!-- /.card -->
           </div>
-          <!--
-          <div class="row">
-           <div class="card col">
-              <div class="card-header">
-                <h3 class="card-title">TASKS</h3>
+          <!-- button ROW -->
+            <div class="row ">
+              <div class="col">
+                <button type="button" class="btn btn-outline-dark" id="btn-save-order">Save Order</button>
               </div>
-            -->
-              <!-- /.card-header -->
-              <!--
-              <div class="card-body">
-                
-              </div>
-              -->
-              <!-- /.card-body -->
-            <!--
             </div>
-            -->
-            <!-- /.card -->
+          <!-- /. button ROW-->
           </div>
 
          </div>
@@ -460,7 +473,7 @@
                   <div class="tab-pane fade show active" id="vehicles-tab" role="tabpanel" aria-labelledby="vehicles-tab">
                     <div class="row">
                       <div class="col-sm-1">
-                        <button class="btn btn-dark">+ NEW</button>
+                        <button class="btn btn-dark" id="vehicles-btn-new">+ NEW</button>
                       </div>
                       <div class="col-sm-1">
                         <button class="btn btn-dark">EDIT</button>
@@ -581,6 +594,7 @@
       </div><!-- /.container-fluid -->
     </section>
     <!-- /.content -->
+    <!-- INTERNAL NOTES MODAL -->
       <div class="modal fade" id="internal-notes-modal">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -609,6 +623,51 @@
             </div>
         </div>
     </div>
+    <!-- /. INTERNAL NOTES MODAL-->
+    <!-- VEHICLES MODAL -->
+      <div class="modal fade" id="vehicles-modal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">Vehicles</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="order-modal-vehicles-form">
+                        <div class="form-group">
+                          <label>Select Vehicle</label>
+                          <select class="form-control select2" id="order-modal-select-vehicle">
+                            <option>Loading vehicles...</option>
+                          </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="note-body">Model Year</label>
+                            <input type="text" class="form-control" id="order-modal-input-modelyear" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="note-body">Make</label>
+                            <input type="text" class="form-control" id="order-modal-input-make" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="note-body">Model</label>
+                            <input type="text" class="form-control" id="order-modal-input-model" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="note-body">Type</label>
+                            <input type="text" class="form-control" id="order-modal-input-type" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="order-modal-save-vehicle-btn">Save Note</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /. VEHICLES MODAL-->
   </div>
   <!-- /.content-wrapper -->
   <footer class="main-footer">
