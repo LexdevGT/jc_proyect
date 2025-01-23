@@ -350,47 +350,6 @@
                 <h3 class="card-title">CUSTOMER</h3>
               </div>
               <!-- /.card-header -->
-              <!--
-              <div class="card-body">
-                <div class="row">
-                  <div class="col-sm">
-                    <label>Name</label>
-                  </div>
-                  <div class="col-sm">
-                    <div class="form-group">
-                      <select class="form-control select2" id="select_customer">
-                        <option>Hector Galindo</option>
-                        <option>Customer 2</option>
-                        <option>Customer 3</option>
-                      </select>
-                    </div> 
-                  </div>
-                </div>
-                <div class="row">
-                  <div class="col-sm">
-                    <label>Phone</label>
-                  </div>
-                  <div class="form-group">
-                    <input type="text" id="customer_phone" disabled="" class="form-control">
-                  </div>  
-                </div>
-                <div class="row">
-                  <div class="col-sm">
-                    <label>Email</label>
-                  </div>
-                  <div class="form-group">
-                    <input type="text" id="customer_email" disabled="" class="form-control">
-                  </div>  
-                </div>
-                <div class="row">
-                  <div class="col-sm">
-                    <label>Saved CC</label>
-                  </div>
-                  <div class="form-group">
-                    <input type="text" id="saved_cc" class="form-control">
-                  </div>  
-                </div>
-              </div>-->
               <div class="card-body">
                 <div class="row">
                     <div class="col-sm">
@@ -464,88 +423,53 @@
                     <a class="nav-link" id="tab_interested_carriers" data-toggle="pill" href="#custom-tabs-two-settings" role="tab" aria-controls="custom-tabs-two-settings" aria-selected="false">Interested Carriers</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" id="tab_payment_history" data-toggle="pill" href="#custom-tabs-two-settings" role="tab" aria-controls="custom-tabs-two-settings" aria-selected="false">Payment History</a>
+                    <a class="nav-link" id="tab_payment_history" data-toggle="pill" href="#payments-history-tab" role="tab" aria-controls="custom-tabs-two-settings" aria-selected="false">Payment History</a>
                   </li>
                 </ul>
               </div>
               <div class="card-body">
                 <div class="tab-content" id="custom-tabs-two-tabContent">
                   <div class="tab-pane fade show active" id="vehicles-tab" role="tabpanel" aria-labelledby="vehicles-tab">
+                      <div class="row">
+                          <div class="col-sm-1">
+                              <button class="btn btn-dark" id="vehicles-btn-new">+ NEW</button>
+                          </div>
+                      </div>
+                      <div class="row mt-3">
+                          <div class="col-12">
+                              <div class="card">
+                                  <div class="card-body table-responsive">
+                                      <table id="vehicles-table" class="table table-bordered table-striped">
+                                          <thead>
+                                              <tr>
+                                                  <th>Year</th>
+                                                  <th>Make</th>
+                                                  <th>Model</th>
+                                                  <th>Type</th>
+                                                  <th>VIN</th>
+                                                  <th>Plate No.</th>
+                                                  <th>Lot No.</th>
+                                                  <th>Color</th>
+                                                  <th>Inop</th>
+                                                  <th>Tariff</th>
+                                                  <th>Actions</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody></tbody>
+                                      </table>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  <div class="tab-pane fade" id="payments-history-tab" role="tabpanel" aria-labelledby="payments-history-tab">
                     <div class="row">
                       <div class="col-sm-1">
-                        <button class="btn btn-dark" id="vehicles-btn-new">+ NEW</button>
-                      </div>
-                      <div class="col-sm-1">
-                        <button class="btn btn-dark">EDIT</button>
+                        <button class="btn btn-dark" id="payments-history-btn">+ NEW</button>
                       </div>
                     </div>
                     <div class="row">
-                      <div class="col-sm">
-                        <div class="row">
-                          <div class="col-sm">Model Year:</div>
-                          <div class="col-sm">1989</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">Make:</div>
-                          <div class="col-sm">Freightliner</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">Model:</div>
-                          <div class="col-sm">Unimog Flu-419</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">Type:</div>
-                          <div class="col-sm">Heavy Equipment</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">Inop:</div>
-                          <div class="col-sm">Yes</div>
-                        </div>
-                      </div>
-                      <div class="col-sm">
-                        <div class="row">
-                          <div class="col-sm">Carrier Pay:</div>
-                          <div class="col-sm">$2,000.00</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">Broker Fee:</div>
-                          <div class="col-sm">$300</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">VIN:</div>
-                          <div class="col-sm">20L * 8.5H * 8W 16000LBS</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">Plate Number:</div>
-                          <div class="col-sm">n/a</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">Color:</div>
-                          <div class="col-sm">n/a</div>
-                        </div>
-                      </div>
-                      <div class="col-sm">
-                        <div class="row">
-                          <div class="col-sm">Lot Number:</div>
-                          <div class="col-sm">n/a</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">Weight:</div>
-                          <div class="col-sm">16,000.00</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">Mods:</div>
-                          <div class="col-sm">n/s</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">Notes:</div>
-                          <div class="col-sm">1989 freightliner Unimog FLU-419 SEE Military Tractor</div>
-                        </div>
-                        <div class="row">
-                          <div class="col-sm">Add-On:</div>
-                          <div class="col-sm">n/a</div>
-                        </div>
-                      </div>
+                      
                     </div>
                   </div>
                   <div class="tab-pane fade" id="internal-notes-tab" role="tabpanel" aria-labelledby="internal-notes-tab">
@@ -626,47 +550,136 @@
     <!-- /. INTERNAL NOTES MODAL-->
     <!-- VEHICLES MODAL -->
       <div class="modal fade" id="vehicles-modal">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h4 class="modal-title">Vehicles</h4>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form id="order-modal-vehicles-form">
-                        <div class="form-group">
-                          <label>Select Vehicle</label>
-                          <select class="form-control select2" id="order-modal-select-vehicle">
-                            <option>Loading vehicles...</option>
-                          </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="note-body">Model Year</label>
-                            <input type="text" class="form-control" id="order-modal-input-modelyear" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="note-body">Make</label>
-                            <input type="text" class="form-control" id="order-modal-input-make" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="note-body">Model</label>
-                            <input type="text" class="form-control" id="order-modal-input-model" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="note-body">Type</label>
-                            <input type="text" class="form-control" id="order-modal-input-type" required>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="order-modal-save-vehicle-btn">Save Note</button>
-                </div>
-            </div>
-        </div>
-    </div>
+          <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                  <div class="modal-header">
+                      <h4 class="modal-title">Add Vehicle to Order</h4>
+                      <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                          <span aria-hidden="true">&times;</span>
+                      </button>
+                  </div>
+                  <div class="modal-body">
+                      <form id="order-modal-vehicles-form">
+                          <div class="form-group">
+                              <label>Select Vehicle</label>
+                              <select class="form-control select2" id="order-modal-select-vehicle">
+                                  <option value="" disabled selected>Select a vehicle</option>
+                              </select>
+                          </div>
+                          <div class="row">
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Model Year</label>
+                                      <input type="text" class="form-control" id="order-modal-input-modelyear" readonly>
+                                  </div>
+                              </div>
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Make</label>
+                                      <input type="text" class="form-control" id="order-modal-input-make" readonly>
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="row">
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Model</label>
+                                      <input type="text" class="form-control" id="order-modal-input-model" readonly>
+                                  </div>
+                              </div>
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Vehicle Type</label>
+                                      <input type="text" class="form-control" id="order-modal-input-type" readonly>
+                                  </div>
+                              </div>
+                          </div>
+                          <!-- Fees Section -->
+                          <div class="row">
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Carrier Pay</label>
+                                      <input type="text"  class="form-control fee-input" id="order-modal-input-carrier-pay">
+                                  </div>
+                              </div>
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Broker Fee</label>
+                                      <input type="text"  class="form-control fee-input" id="order-modal-input-broker-fee">
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="row">
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Wrecker Fee</label>
+                                      <input type="text"  class="form-control fee-input" id="order-modal-input-wrecker-fee">
+                                  </div>
+                              </div>
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Other Fee</label>
+                                      <input type="text" class="form-control fee-input" id="order-modal-input-other-fee">
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="row">
+                              <div class="col-md-12">
+                                  <div class="form-group">
+                                      <label>Vehicle Tariff (Total)</label>
+                                      <input type="text" class="form-control" id="order-modal-input-tariff" readonly>
+                                  </div>
+                              </div>
+                          </div>
+                          <!-- Vehicle Details -->
+                          <div class="row">
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>VIN</label>
+                                      <input type="text" class="form-control" id="order-modal-input-vin">
+                                  </div>
+                              </div>
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Plate No.</label>
+                                      <input type="text" class="form-control" id="order-modal-input-plateno">
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="row">
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Lot No.</label>
+                                      <input type="text" class="form-control" id="order-modal-input-lotno">
+                                  </div>
+                              </div>
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Color</label>
+                                      <input type="text" class="form-control" id="order-modal-input-color">
+                                  </div>
+                              </div>
+                          </div>
+                          <div class="row">
+                              <div class="col-md-6">
+                                  <div class="form-group">
+                                      <label>Inop</label>
+                                      <div class="custom-control custom-switch custom-switch-on-success">
+                                          <input type="checkbox" class="custom-control-input" id="order-modal-input-inop">
+                                          <label class="custom-control-label" for="order-modal-input-inop"></label>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </form>
+                  </div>
+                  <div class="modal-footer justify-content-between">
+                      <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                      <button type="button" class="btn btn-primary" id="order-modal-save-vehicle-btn">Save Vehicle</button>
+                  </div>
+              </div>
+          </div>
+      </div>
     <!-- /. VEHICLES MODAL-->
   </div>
   <!-- /.content-wrapper -->
@@ -745,6 +758,7 @@
   }, 1200);
 
   load_order_view();
+  loadOrderVehicles();
 </script>
 </body>
 </html>
