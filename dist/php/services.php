@@ -202,6 +202,9 @@
 			case 'save_internal_note':
 			    saveInternalNoteFunction();
 			    break;
+			case 'save_order':
+			    saveOrderFunction();
+			    break;
 			case 'update_user':
 				updateUserFunction();
 				break;	
@@ -281,11 +284,33 @@
 			    getUserTeamFunction();
 			    break;
 
+			case 'load_vehicles_for_select':
+		        loadVehiclesForSelectFunction();
+		        break;
+			case 'get_vehicle_details':
+		        getVehicleDetailsFunction();
+		        break;
 
-			case 'save_order':
-			    saveOrderFunction();
-			    break;
 
+		    case 'save_order_vehicle':
+		        saveOrderVehicleFunction();
+		        break;
+
+		    case 'load_order_vehicles':
+		        loadOrderVehiclesFunction();
+		        break;
+
+		   	case 'delete_order_vehicle':
+		   		deleteOrderVehicleFunction();
+		   		break;
+
+		   	case 'delete_payment':
+		   		deletePaymentFunction();
+		   		break;
+
+		   	case 'load_payments_by_order':
+		   		loadPaymentsByOrderFunction();
+		   		break;
 		}
 	}
 
@@ -309,6 +334,327 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function loadPaymentsByOrderFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $orderId = $_POST['order_id'];
+
+	    $query = "SELECT p.*, 
+	              DATE_FORMAT(p.payment_date, '%Y-%m-%d') as payment_date,
+	              o.order_reference_id,
+	              CONCAT(c.first_name, ' ', c.last_name) as customer_name
+	              FROM payments p
+	              LEFT JOIN orders o ON p.order_id = o.id
+	              LEFT JOIN customers c ON o.id_customer = c.id
+	              WHERE p.order_id = ?
+	              ORDER BY p.payment_date DESC";
+
+	    try {
+	        $stmt = $conn->prepare($query);
+	        if (!$stmt) {
+	            throw new Exception("Error preparing query: " . $conn->error);
+	        }
+
+	        $stmt->bind_param("i", $orderId);
+
+	        if (!$stmt->execute()) {
+	            throw new Exception("Error executing query: " . $stmt->error);
+	        }
+
+	        $result = $stmt->get_result();
+	        while ($row = $result->fetch_assoc()) {
+	            $row['payment_amount'] = number_format($row['payment_amount'], 2, '.', ',');
+	            $jsondata['data'][] = $row;
+	        }
+	    } catch (Exception $e) {
+	        $jsondata['error'] = $e->getMessage();
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function deletePaymentFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+	    
+	    $paymentId = $_POST['payment_id'];
+	    
+	    try {
+	        $conn->begin_transaction();
+	        
+	        $query = "DELETE FROM payments WHERE id = ?";
+	        $stmt = $conn->prepare($query);
+	        $stmt->bind_param("i", $paymentId);
+	        
+	        if (!$stmt->execute()) {
+	            throw new Exception("Error deleting payment: " . $stmt->error);
+	        }
+	        
+	        $conn->commit();
+	        $jsondata['message'] = 'Payment deleted successfully!';
+	        
+	    } catch (Exception $e) {
+	        $conn->rollback();
+	        $jsondata['error'] = $e->getMessage();
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function loadPaymentsFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $query = "SELECT p.*, 
+	              DATE_FORMAT(p.payment_date, '%Y-%m-%d') as payment_date,
+	              o.order_reference_id,
+	              CONCAT(c.first_name, ' ', c.last_name) as customer_name
+	              FROM payments p
+	              LEFT JOIN orders o ON p.order_id = o.id
+	              LEFT JOIN customers c ON o.id_customer = c.id
+	              ORDER BY p.payment_date DESC";
+
+	    try {
+	        $stmt = $conn->prepare($query);
+	        if (!$stmt) {
+	            throw new Exception("Error preparing query: " . $conn->error);
+	        }
+
+	        if (!$stmt->execute()) {
+	            throw new Exception("Error executing query: " . $stmt->error);
+	        }
+
+	        $result = $stmt->get_result();
+	        while ($row = $result->fetch_assoc()) {
+	            // Format amount for display
+	            $row['payment_amount'] = number_format($row['payment_amount'], 2, '.', ',');
+	            
+	            // Add order reference and customer info
+	            if (!$row['order_reference_id']) {
+	                $row['order_reference_id'] = 'Order #' . $row['order_id'];
+	            }
+	            
+	            $jsondata['data'][] = $row;
+	        }
+	    } catch (Exception $e) {
+	        $jsondata['error'] = $e->getMessage();
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function deleteOrderVehicleFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+	    
+	    try {
+	        $conn->begin_transaction();
+	        
+	        $orderId = $_POST['order_id'];
+	        $vehicleId = $_POST['vehicle_id'];
+	        
+	        $query = "DELETE FROM orders_vehicles WHERE order_id = ? AND id = ?";
+	        $stmt = $conn->prepare($query);
+	        $stmt->bind_param("ii", $orderId, $vehicleId);
+	        
+	        if (!$stmt->execute()) {
+	            throw new Exception("Error deleting vehicle: " . $stmt->error);
+	        }
+	        
+	        $conn->commit();
+	        $jsondata['message'] = 'Vehicle deleted successfully';
+	        
+	    } catch (Exception $e) {
+	        $conn->rollback();
+	        $jsondata['error'] = $e->getMessage();
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function loadOrderVehiclesFunction() {
+	    global $conn;
+	   $jsondata = ['error' => '', 'data' => []];
+	   
+	   $orderId = $_POST['order_id'];
+	   
+	   $query = "SELECT ov.*, v.model_year, v.make, v.model, v.vehicle_type
+	             FROM orders_vehicles ov
+	             INNER JOIN vehicles v ON ov.vehicle_id = v.id
+	             WHERE ov.order_id = ?
+	             ORDER BY v.model_year DESC";
+	             
+	   $stmt = $conn->prepare($query);
+	   $stmt->bind_param("i", $orderId);
+	   
+	   if ($stmt->execute()) {
+	       $result = $stmt->get_result();
+	       while ($row = $result->fetch_assoc()) {
+	           $jsondata['data'][] = $row;
+	       }
+	   } else {
+	       $jsondata['error'] = 'Error loading vehicles: ' . $conn->error;
+	   }
+	   
+	   echo json_encode($jsondata);
+	}
+
+	function saveOrderVehicleFunction() {
+	   global $conn;
+	   $jsondata = ['error' => '', 'message' => ''];
+	   
+	   try {
+	       $conn->begin_transaction();
+	       
+	       $orderId = $_POST['order_id'];
+	       $vehicleData = json_decode($_POST['vehicle_data'], true);
+
+	       // Verificar si ya existe
+	       $checkQuery = "SELECT id FROM orders_vehicles 
+	                     WHERE order_id = ? AND vehicle_id = ?";
+	       $stmt = $conn->prepare($checkQuery);
+	       $stmt->bind_param("ii", $orderId, $vehicleData['vehicle_id']);
+	       $stmt->execute();
+	       $result = $stmt->get_result();
+	       
+	       if ($result->num_rows > 0) {
+	           // Update
+	           $query = "UPDATE orders_vehicles SET 
+	                    vehicle_tariff = ?,
+	                    vin = ?,
+	                    plate_no = ?,
+	                    lot_no = ?,
+	                    color = ?,
+	                    inop = ?
+	                    WHERE order_id = ? AND vehicle_id = ?";
+	                    
+	           $stmt = $conn->prepare($query);
+	           $stmt->bind_param(
+	               "sssssiis",
+	               $vehicleData['vehicle_tariff'],
+	               $vehicleData['vin'],
+	               $vehicleData['plate_no'],
+	               $vehicleData['lot_no'],
+	               $vehicleData['color'],
+	               $vehicleData['inop'],
+	               $orderId,
+	               $vehicleData['vehicle_id']
+	           );
+	       } else {
+	           // Insert
+	           $query = "INSERT INTO orders_vehicles (
+	               order_id, vehicle_id, vehicle_tariff, vin,
+	               plate_no, lot_no, color, inop
+	           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+	           
+	           $stmt = $conn->prepare($query);
+	           $stmt->bind_param(
+	               "iisssssi",
+	               $orderId,
+	               $vehicleData['vehicle_id'],
+	               $vehicleData['vehicle_tariff'],
+	               $vehicleData['vin'],
+	               $vehicleData['plate_no'],
+	               $vehicleData['lot_no'],
+	               $vehicleData['color'],
+	               $vehicleData['inop']
+	           );
+	       }
+
+	       if (!$stmt->execute()) {
+	           throw new Exception("Error saving vehicle: " . $stmt->error);
+	       }
+
+	       // Update order fees
+	       $updateOrder = "UPDATE orders SET
+	                      total_tariff = ?,
+	                      carrier_pay = ?,
+	                      broker_fee = ?,
+	                      wrecker_fee = ?,
+	                      other_fee = ?
+	                      WHERE id = ?";
+	                      
+	       $stmt = $conn->prepare($updateOrder);
+	       $stmt->bind_param(
+	           "dddddi",
+	           $vehicleData['vehicle_tariff'],
+	           $vehicleData['carrier_pay'],
+	           $vehicleData['broker_fee'],
+	           $vehicleData['wrecker_fee'],
+	           $vehicleData['other_fee'],
+	           $orderId
+	       );
+
+	       if (!$stmt->execute()) {
+	           throw new Exception("Error updating order fees: " . $stmt->error);
+	       }
+	       
+	       $conn->commit();
+	       $jsondata['message'] = 'Vehicle and order fees updated successfully!';
+	       
+	   } catch (Exception $e) {
+	       $conn->rollback();
+	       $jsondata['error'] = $e->getMessage();
+	   }
+	   
+	   echo json_encode($jsondata);
+	}
+
+	function getVehicleDetailsFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+	    
+	    $vehicleId = $_POST['vehicle_id'];
+	    $orderId = $_POST['order_id'];
+	    //error_log($vehicleId. ' ' .$orderId);
+	    /*
+	    $query = "SELECT model_year, make, model, vehicle_type 
+	              FROM vehicles 
+	              WHERE id = ?";*/
+
+	    $query = "SELECT v.model_year, v.make, v.model, v.vehicle_type, ov.vin, ov.plate_no, ov.lot_no ,ov.color ,ov.inop  
+	              FROM vehicles v
+	              LEFT JOIN orders_vehicles ov 
+	              ON ov.order_id = ?
+	              AND v.id = ov.vehicle_id 
+	              WHERE v.id = ?";
+	              
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("ii", $orderId,$vehicleId);
+	    
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching vehicle details: ' . $conn->error;
+	    }
+	    //error_log(print_r($jsondata,true));
+	    echo json_encode($jsondata);
+	}
+
+	function loadVehiclesForSelectFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+	    
+	    $query = "SELECT id, model_year, make, model, vehicle_type 
+	              FROM vehicles 
+	              WHERE status = 1 
+	              ORDER BY model_year DESC, make ASC";
+	              
+	    $result = $conn->query($query);
+	    
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading vehicles: ' . $conn->error;
+	    }
+	    
+	    echo json_encode($jsondata);
 	}
 
 	function saveOrderFunction() {

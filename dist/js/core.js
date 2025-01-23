@@ -134,7 +134,16 @@ $(function(){
     // CALL ORDER VIEW VEHICLES MODAL
     $('#vehicles-btn-new').click(function(){
         order_vehicles_new_button();
-    })
+    });
+
+    // Función para cargar los detalles del vehículo seleccionado
+    $('#order-modal-select-vehicle').on('change', getVehicleDetails);
+
+    // Función para agregar un vehiculo a la orden
+    $('#order-modal-save-vehicle-btn').click(function() {
+        save_order_vehicle();
+    });
+
 });
 
 function new_function(){
@@ -166,6 +175,229 @@ function new_function(){
       }    
     });
   }
+}
+
+function deletePayment(paymentId) {
+    if (confirm('Are you sure you want to delete this payment? This action cannot be undone.')) {
+        $.ajax({
+            type: "POST",
+            url: "../dist/php/services.php",
+            data: {
+                option: 'delete_payment',
+                payment_id: paymentId
+            },
+            dataType: "json",
+            success: function(response) {
+                if (response.error === '') {
+                    alert(response.message);
+                    load_payments();
+                } else {
+                    alert(response.error);
+                }
+            }
+        });
+    }
+}
+
+function load_vehicle_action_buttons_functions(){
+    $('.delete-vehicle').click(function(){
+        if (confirm('Are you sure you want to remove this vehicle?')) {
+           const vehicleId = $(this).data('id');
+           const orderId = $('#order_view_idOrder').text();
+           
+           $.ajax({
+               type: "POST",
+               url: "../dist/php/services.php",
+               data: {
+                   option: 'delete_order_vehicle',
+                   order_id: orderId,
+                   vehicle_id: vehicleId
+               },
+               dataType: "json",
+               success: function(response) {
+                   if (response.error === '') {
+                       loadOrderVehicles();
+                   } else {
+                       alert(response.error);
+                   }
+               }
+           });
+       }
+    });
+}
+
+// Función para cargar los vehículos de la orden
+function loadOrderVehicles() {
+   const orderId = $('#order_view_idOrder').text();
+   
+   $.ajax({
+       type: "POST",
+       url: "../dist/php/services.php",
+       data: {
+           option: 'load_order_vehicles',
+           order_id: orderId
+       },
+       dataType: "json",
+       success: function(response) {
+           if (response.error === '') {
+               let html = '';
+               response.data.forEach(vehicle => {
+                   const inopChecked = vehicle.inop == 1 ? 'checked' : '';
+                   html += `
+                       <tr>
+                           <td>${vehicle.model_year}</td>
+                           <td>${vehicle.make}</td>
+                           <td>${vehicle.model}</td>
+                           <td>${vehicle.vehicle_type}</td>
+                           <td>${vehicle.vin || ''}</td>
+                           <td>${vehicle.plate_no || ''}</td>
+                           <td>${vehicle.lot_no || ''}</td>
+                           <td>${vehicle.color || ''}</td>
+                           <td>
+                               <div class="custom-control custom-switch custom-switch-on-success">
+                                   <input type="checkbox" class="custom-control-input" disabled ${inopChecked}>
+                                   <label class="custom-control-label"></label>
+                               </div>
+                           </td>
+                           <td>$${parseFloat(vehicle.vehicle_tariff).toFixed(2)}</td>
+                           <td>
+                               <button class="btn btn-sm btn-danger delete-vehicle" data-id="${vehicle.id}">
+                                   <i class="fas fa-trash"></i>
+                               </button>
+                           </td>
+                       </tr>`;
+               });
+               $('#vehicles-table tbody').html(html);
+               load_vehicle_action_buttons_functions();
+           } else {
+               alert(response.error);
+           }
+       }
+   });
+}
+
+function save_order_vehicle(){
+    const orderId = $('#order_view_idOrder').text();
+    const vehicleData = {
+        vehicle_id: $('#order-modal-select-vehicle').val(),
+        carrier_pay: $('#carrier_pay').val().replace('$', '').trim(),
+        broker_fee: $('#broker_pay').val().replace('$', '').trim(),
+        wrecker_fee: $('#wrecker_pay').val().replace('$', '').trim(),
+        other_fee: $('#other_pay').val().replace('$', '').trim(),
+        vehicle_tariff: $('#total_tariff').val().replace('$', '').trim(),
+        vin: $('#order-modal-input-vin').val(),
+        plate_no: $('#order-modal-input-plateno').val(),
+        lot_no: $('#order-modal-input-lotno').val(),
+        color: $('#order-modal-input-color').val(),
+        inop: $('#order-modal-input-inop').is(':checked') ? 1 : 0
+    };
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_order_vehicle',
+            order_id: orderId,
+            vehicle_data: JSON.stringify(vehicleData)
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                $('#vehicles-modal').modal('hide');
+                loadOrderVehicles();
+                alert('Vehicle saved!');
+
+                load_order_view(); // Recargar toda la orden
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function getVehicleDetails(){
+    const vehicleId = $('#order-modal-select-vehicle').val();
+    const orderId = $('#order_view_idOrder').text();
+
+    if (vehicleId) {
+        $.ajax({
+            type: "POST",
+            url: "../dist/php/services.php",
+            data: {
+                option: 'get_vehicle_details',
+                vehicle_id: vehicleId,
+                order_id: orderId
+            },
+            dataType: "json",
+            success: function(response) {
+                if (response.error === '') {
+                    const vehicle = response.data;
+                    $('#order-modal-input-modelyear').val(vehicle.model_year);
+                    $('#order-modal-input-make').val(vehicle.make);
+                    $('#order-modal-input-model').val(vehicle.model);
+                    $('#order-modal-input-type').val(vehicle.vehicle_type);
+
+                    // Si hay datos previos del vehículo en la orden
+                   if(vehicle.vin) {
+                       $('#order-modal-input-vin').val(vehicle.vin);
+                       $('#order-modal-input-plateno').val(vehicle.plate_no);
+                       $('#order-modal-input-lotno').val(vehicle.lot_no);
+                       $('#order-modal-input-color').val(vehicle.color);
+                       $('#order-modal-input-inop').prop('checked', vehicle.inop == 1);
+                   }
+                } else {
+                    alert(response.error);
+                }
+            }
+        });
+    }
+}
+
+function load_order_vehicle_fees(){
+    var carrier_pay = $('#carrier_pay').val();
+    var broker_pay = $('#broker_pay').val();
+    var wrecker_pay = $('#wrecker_pay').val();
+    var other_pay = $('#other_pay').val();
+    var total_tariff = $('#total_tariff').val();
+
+    $('#order-modal-input-carrier-pay').val(carrier_pay);
+    $('#order-modal-input-broker-fee').val(broker_pay);
+    $('#order-modal-input-wrecker-fee').val(wrecker_pay);
+    $('#order-modal-input-other-fee').val(other_pay);
+    $('#order-modal-input-tariff').val(total_tariff);
+
+}
+
+// Función para cargar vehículos en el select
+function loadVehiclesForOrder() {
+    
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { 
+            option: 'load_vehicles_for_select'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '<option value="" disabled selected>Select a vehicle</option>';
+                response.data.forEach(vehicle => {
+                    html += `<option value="${vehicle.id}">
+                        ${vehicle.model_year} - ${vehicle.make} - ${vehicle.model} - ${vehicle.vehicle_type}
+                    </option>`;
+                });
+                $('#order-modal-select-vehicle').html(html);
+
+                // Inicializar select2 si lo estás usando
+                $('#order-modal-select-vehicle').select2({
+                    dropdownParent: $('#vehicles-modal')
+                });
+            } else {
+                alert(response.error);
+            }
+            load_order_vehicle_fees();
+        }
+    });
 }
 
 function saveOrderFunction() {
@@ -361,6 +593,7 @@ function order_vehicles_new_button(){
     $('#order-modal-input-type').val('');
     // Show modal
     $('#vehicles-modal').modal('show');
+    loadVehiclesForOrder();
 }
 
 function load_payments() {
@@ -377,19 +610,22 @@ function load_payments() {
                     html += `
                         <tr>
                             <td>${payment.id}</td>
-                            <td><a href="#" class="edit-payment" data-id="${payment.id}">${payment.order_id}</a></td>
+                            <td><a href="order_view.html?id=${payment.order_id}">${payment.order_id}</a></td>
                             <td>${payment.payment_date}</td>
                             <td>${payment.payment_type}</td>
                             <td>${payment.payment_direction}</td>
                             <td>$${parseFloat(payment.payment_amount).toFixed(2)}</td>
                             <td>${payment.identification}</td>
                             <td>
-                                <div class="form-group">
+                                <div class="btn-group">
                                     <div class="custom-control custom-switch custom-switch-on-success">
                                         <input type="checkbox" class="custom-control-input payment-status" 
-                                               id="customSwitch${payment.id}" data-id="${payment.id}" ${checked}>
+                                            id="customSwitch${payment.id}" data-id="${payment.id}" ${checked}>
                                         <label class="custom-control-label" for="customSwitch${payment.id}"></label>
                                     </div>
+                                    <button class="btn btn-sm btn-danger delete-payment ml-2" data-id="${payment.id}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>`;
@@ -405,19 +641,20 @@ function load_payments() {
                     "responsive": true,
                     "lengthChange": false,
                     "autoWidth": false,
+                    "searching": true,
                     "buttons": ["csv", "excel", "pdf", "print", "colvis"]
                 }).buttons().container().appendTo('#payments-table_wrapper .col-md-6:eq(0)');
 
+                // Add event listeners
                 $('.payment-status').on('change', function() {
                     const id = $(this).data('id');
                     const newStatus = $(this).is(':checked') ? 1 : 0;
                     updatePaymentStatus(id, newStatus);
                 });
 
-                $('.edit-payment').on('click', function(e) {
-                    e.preventDefault();
+                $('.delete-payment').on('click', function() {
                     const id = $(this).data('id');
-                    getPaymentInfo(id);
+                    deletePayment(id);
                 });
             } else {
                 alert(response.error);
@@ -440,6 +677,67 @@ function loadOrdersSelect() {
                     html += `<option value="${order.id}">Order #${order.id} - ${order.customer_name}</option>`;
                 });
                 $('#payment-order-select').html(html);
+                $('#payment-order-select').on('change', function() {
+                    const orderId = $(this).val();
+                    loadPaymentsByOrder(orderId);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function loadPaymentsByOrder(orderId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { 
+            option: 'load_payments_by_order',
+            order_id: orderId 
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const table = $('#payments-table').DataTable();
+                table.clear();
+                
+                response.data.forEach(payment => {
+                    table.row.add([
+                        payment.id,
+                        `<a href="order_view.html?id=${payment.order_id}">${payment.order_id}</a>`,
+                        payment.payment_date,
+                        payment.payment_type,
+                        payment.payment_direction,
+                        `$${parseFloat(payment.payment_amount).toFixed(2)}`,
+                        payment.identification,
+                        `<div class="btn-group">
+                            <div class="custom-control custom-switch custom-switch-on-success">
+                                <input type="checkbox" class="custom-control-input payment-status" 
+                                    id="customSwitch${payment.id}" data-id="${payment.id}" 
+                                    ${payment.status == 1 ? 'checked' : ''}>
+                                <label class="custom-control-label" for="customSwitch${payment.id}"></label>
+                            </div>
+                            <button class="btn btn-sm btn-danger delete-payment ml-2" data-id="${payment.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>`
+                    ]);
+                });
+                
+                table.draw();
+                
+                // Reattach event listeners
+                $('.payment-status').on('change', function() {
+                    const id = $(this).data('id');
+                    const newStatus = $(this).is(':checked') ? 1 : 0;
+                    updatePaymentStatus(id, newStatus);
+                });
+
+                $('.delete-payment').on('click', function() {
+                    const id = $(this).data('id');
+                    deletePayment(id);
+                });
             } else {
                 alert(response.error);
             }
