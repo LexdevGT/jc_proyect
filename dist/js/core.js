@@ -177,6 +177,43 @@ function new_function(){
   }
 }
 
+function savePaymentFromOrder(paymentData) {
+    if (!paymentData.order_id || !paymentData.payment_date || !paymentData.payment_type || 
+        !paymentData.payment_direction || !paymentData.payment_amount) {
+        alert('Please fill in all required fields!');
+        return;
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_payment',
+            payment_data: JSON.stringify(paymentData)
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                $('#payment-modal').modal('hide');
+                loadPaymentsByOrder(paymentData.order_id);
+                clearPaymentModalForm();
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function clearPaymentModalForm() {
+    $('#payment-date-input').val('');
+    $('#payment-type').val('').trigger('change');
+    $('#payment-direction').val('').trigger('change');
+    $('#payment-amount').val('');
+    $('#payment-identification').val('');
+    $('#payment-note').val('');
+}
+
 function deletePayment(paymentId) {
     if (confirm('Are you sure you want to delete this payment? This action cannot be undone.')) {
         $.ajax({
@@ -191,6 +228,9 @@ function deletePayment(paymentId) {
                 if (response.error === '') {
                     alert(response.message);
                     load_payments();
+                    
+                    const orderId = $('#order_view_idOrder').text();
+                    loadPaymentsByOrder(orderId);
                 } else {
                     alert(response.error);
                 }
@@ -687,7 +727,7 @@ function loadOrdersSelect() {
         }
     });
 }
-
+/*
 function loadPaymentsByOrder(orderId) {
     $.ajax({
         type: "POST",
@@ -723,6 +763,85 @@ function loadPaymentsByOrder(orderId) {
                             </button>
                         </div>`
                     ]);
+                });
+                
+                table.draw();
+                
+                // Reattach event listeners
+                $('.payment-status').on('change', function() {
+                    const id = $(this).data('id');
+                    const newStatus = $(this).is(':checked') ? 1 : 0;
+                    updatePaymentStatus(id, newStatus);
+                });
+
+                $('.delete-payment').on('click', function() {
+                    const id = $(this).data('id');
+                    deletePayment(id);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}*/
+
+function loadPaymentsByOrder(orderId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { 
+            option: 'load_payments_by_order',
+            order_id: orderId 
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                // Determinar qué tabla estamos usando
+                const isMaintenanceTable = $('#payments-table').length > 0;
+                const table = isMaintenanceTable ? 
+                    $('#payments-table').DataTable() : 
+                    $('#order-payments-table').DataTable();
+
+                table.clear();
+                
+                response.data.forEach(payment => {
+                    const statusSwitch = `
+                        <div class="btn-group">
+                            <div class="custom-control custom-switch custom-switch-on-success">
+                                <input type="checkbox" class="custom-control-input payment-status" 
+                                    id="customSwitch${payment.id}" data-id="${payment.id}" 
+                                    ${payment.status == 1 ? 'checked' : ''}>
+                                <label class="custom-control-label" for="customSwitch${payment.id}"></label>
+                            </div>
+                            <button class="btn btn-sm btn-danger delete-payment ml-2" data-id="${payment.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>`;
+
+                    if (isMaintenanceTable) {
+                        table.row.add([
+                            payment.id,
+                            `<a href="order_view.html?id=${payment.order_id}">${payment.order_id}</a>`,
+                            payment.payment_date,
+                            payment.payment_type,
+                            payment.payment_direction,
+                            `$${parseFloat(payment.payment_amount).toFixed(2)}`,
+                            payment.identification,
+                            statusSwitch
+                        ]);
+                    } else {
+                        table.row.add([
+                            payment.payment_date,
+                            payment.payment_type,
+                            payment.payment_direction,
+                            `$${parseFloat(payment.payment_amount).toFixed(2)}`,
+                            payment.identification,
+                            payment.note || '',
+                            `<button class="btn btn-sm btn-danger delete-payment" data-id="${payment.id}">
+                                <i class="fas fa-trash"></i>
+                            </button>`
+                        ]);
+                    }
                 });
                 
                 table.draw();
