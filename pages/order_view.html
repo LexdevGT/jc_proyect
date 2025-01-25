@@ -424,6 +424,7 @@
                   </li>
                   <li class="nav-item">
                     <a class="nav-link" id="tab_payment_history" data-toggle="pill" href="#payments-history-tab" role="tab" aria-controls="custom-tabs-two-settings" aria-selected="false">Payment History</a>
+
                   </li>
                 </ul>
               </div>
@@ -463,14 +464,33 @@
                       </div>
                   </div>
                   <div class="tab-pane fade" id="payments-history-tab" role="tabpanel" aria-labelledby="payments-history-tab">
-                    <div class="row">
-                      <div class="col-sm-1">
-                        <button class="btn btn-dark" id="payments-history-btn">+ NEW</button>
+                      <div class="row">
+                          <div class="col-sm-1">
+                              <button class="btn btn-dark" id="new-payment-btn">+ NEW</button>
+                          </div>
                       </div>
-                    </div>
-                    <div class="row">
-                      
-                    </div>
+                      <div class="row mt-3">
+                          <div class="col-12">
+                              <div class="card">
+                                  <div class="card-body table-responsive">
+                                      <table id="order-payments-table" class="table table-bordered table-striped">
+                                          <thead>
+                                              <tr>
+                                                  <th>Date</th>
+                                                  <th>Type</th>
+                                                  <th>Direction</th>
+                                                  <th>Amount</th>
+                                                  <th>Identification</th>
+                                                  <th>Note</th>
+                                                  <th>Actions</th>
+                                              </tr>
+                                          </thead>
+                                          <tbody></tbody>
+                                      </table>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
                   </div>
                   <div class="tab-pane fade" id="internal-notes-tab" role="tabpanel" aria-labelledby="internal-notes-tab">
                     <div class="row">
@@ -681,6 +701,94 @@
           </div>
       </div>
     <!-- /. VEHICLES MODAL-->
+    <!-- PAYMENTS MODAL -->
+      <div class="modal fade" id="payment-modal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">New Payment</h4>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="payment-form">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Payment Date</label>
+                                    <div class="input-group date" id="payment-date" data-target-input="nearest">
+                                        <input type="text" class="form-control datetimepicker-input" id="payment-date-input" data-target="#payment-date"/>
+                                        <div class="input-group-append" data-target="#payment-date" data-toggle="datetimepicker">
+                                            <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Payment Type</label>
+                                    <select id="payment-type" class="form-control select2">
+                                        <option value="" disabled selected>Select payment type</option>
+                                        <option value="Credit Card">Credit Card</option>
+                                        <option value="Check">Check</option>
+                                        <option value="Cash">Cash</option>
+                                        <option value="Wire">Wire</option>
+                                        <option value="EFT">EFT</option>
+                                        <option value="Venmo">Venmo</option>
+                                        <option value="PayPal">PayPal</option>
+                                        <option value="Zelle">Zelle</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Direction</label>
+                                    <select id="payment-direction" class="form-control select2">
+                                        <option value="" disabled selected>Select direction</option>
+                                        <option value="From Customer">From Customer</option>
+                                        <option value="To Carrier">To Carrier</option>
+                                        <option value="To Terminal">To Terminal</option>
+                                        <option value="From Carrier">From Carrier</option>
+                                        <option value="To Customer">To Customer</option>
+                                        <option value="Carrier Refund To Customer">Carrier Refund To Customer</option>
+                                        <option value="From Factoring Company">From Factoring Company</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Amount</label>
+                                    <input type="text" id="payment-amount" class="form-control" placeholder="Enter amount">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="form-group">
+                                    <label>Identification</label>
+                                    <input type="text" id="payment-identification" class="form-control" placeholder="Enter identification">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="form-group">
+                                    <label>Note</label>
+                                    <textarea id="payment-note" class="form-control" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="save-payment-btn">Save Payment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- /. PAYMENTS MODAL -->
   </div>
   <!-- /.content-wrapper -->
   <footer class="main-footer">
@@ -747,6 +855,54 @@
         format: 'L'
     });
 
+     // Payment date picker initialization
+    $('#payment-date').datetimepicker({
+        format: 'YYYY-MM-DD'
+    });
+
+    // Format amount input
+    $('#payment-amount').on('blur', function() {
+        const value = $(this).val().replace(/[^\d.-]/g, '');
+        if (value) {
+            $(this).val('$' + parseFloat(value).toFixed(2));
+        }
+    });
+
+    $('#order-payments-table').DataTable({
+        "responsive": true,
+        "lengthChange": false,
+        "autoWidth": false,
+        "searching": true,
+        "paging": true
+    });
+    
+    // New payment button handler
+    $('#new-payment-btn').on('click', function() {
+        $('#payment-modal').modal('show');
+    });
+
+    // Save payment button handler
+    $('#save-payment-btn').on('click', function() {
+        const orderId = $('#order_view_idOrder').text();
+        const paymentData = {
+            order_id: orderId,
+            payment_date: $('#payment-date-input').val(),
+            payment_type: $('#payment-type').val(),
+            payment_direction: $('#payment-direction').val(),
+            payment_amount: $('#payment-amount').val().replace('$', '').trim(),
+            identification: $('#payment-identification').val(),
+            note: $('#payment-note').val()
+        };
+
+        savePaymentFromOrder(paymentData);
+    });
+
+    // Load payments when tab is clicked
+    $('#tab_payment_history').on('click', function() {
+        const orderId = $('#order_view_idOrder').text();
+        //alert('id: '+orderId);
+        loadPaymentsByOrder(orderId);
+    });
   })
 </script>
 <script type="text/javascript">
@@ -759,6 +915,7 @@
 
   load_order_view();
   loadOrderVehicles();
+
 </script>
 </body>
 </html>
