@@ -420,7 +420,7 @@
                     <a class="nav-link" id="custom-tabs-two-settings-tab" data-toggle="pill" href="#custom-tabs-two-settings" role="tab" aria-controls="custom-tabs-two-settings" aria-selected="false">Change History</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" id="tab_interested_carriers" data-toggle="pill" href="#custom-tabs-two-settings" role="tab" aria-controls="custom-tabs-two-settings" aria-selected="false">Interested Carriers</a>
+                    <a class="nav-link" id="tab_interested_carriers" data-toggle="pill" href="#interested-carriers-tab" role="tab" aria-controls="custom-tabs-two-settings" aria-selected="false">Interested Carriers</a>
                   </li>
                   <li class="nav-item">
                     <a class="nav-link" id="tab_payment_history" data-toggle="pill" href="#payments-history-tab" role="tab" aria-controls="custom-tabs-two-settings" aria-selected="false">Payment History</a>
@@ -515,6 +515,35 @@
                       
                     </div>
                   </div>
+                  <div class="tab-pane fade" id="interested-carriers-tab" role="tabpanel" aria-labelledby="tab_interested_carriers">
+                    <div class="row">
+                        <div class="col-sm-1">
+                            <button class="btn btn-dark" id="new-interested-carrier-btn">+ NEW</button>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-body table-responsive">
+                                    <table id="order-interested-carriers-table" class="table table-bordered table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Carrier</th>
+                                                <th>Status</th>
+                                                <th>Contact</th>
+                                                <th>Phone</th>
+                                                <th>Pickup Date</th>
+                                                <th>Delivery Date</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                   <div class="tab-pane fade" id="custom-tabs-two-settings" role="tabpanel" aria-labelledby="custom-tabs-two-settings-tab">
                      <div class="row">
                       <div class="col-sm-1">
@@ -789,6 +818,130 @@
         </div>
     </div>
     <!-- /. PAYMENTS MODAL -->
+    <!-- INTERESTED CARRIERS MODAL -->
+      <div class="modal fade" id="interested-carrier-modal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h4 class="modal-title">New Interested Carrier</h4>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="interested-carrier-form">
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Carrier</label>
+                                    <select class="form-control select2" id="ic-carrier-select"></select>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select class="form-control" id="ic-status">
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Carrier Pay</label>
+                                    <input type="text" class="form-control" id="ic-carrier-pay">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Pickup Date</label>
+                                    <div class="input-group date" id="ic-pickup-date" data-target-input="nearest">
+                                        <input type="text" class="form-control datetimepicker-input" id="ic-pickup-date-input"/>
+                                        <div class="input-group-append" data-target="#ic-pickup-date" data-toggle="datetimepicker">
+                                            <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Pickup Window</label>
+                                    <select class="form-control" id="ic-pickup-window">
+                                        <option value="estimated">Estimated</option>
+                                        <option value="exactly">Exactly</option>
+                                        <option value="no_later">No Later Than</option>
+                                        <option value="no_earlier">No Earlier Than</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Delivery Date</label>
+                                    <div class="input-group date" id="ic-delivery-date" data-target-input="nearest">
+                                        <input type="text" class="form-control datetimepicker-input" id="ic-delivery-date-input"/>
+                                        <div class="input-group-append" data-target="#ic-delivery-date" data-toggle="datetimepicker">
+                                            <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Delivery Window</label>
+                                    <select class="form-control" id="ic-delivery-window">
+                                        <option value="estimated">Estimated</option>
+                                        <option value="exactly">Exactly</option>
+                                        <option value="no_later">No Later Than</option>
+                                        <option value="no_earlier">No Earlier Than</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Insurance Policy</label>
+                                    <select class="form-control select2" id="ic-insurance-policy"></select>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="form-group">
+                                    <label>Driver</label>
+                                    <select class="form-control select2" id="ic-driver"></select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="form-group">
+                                    <label>Special Instructions</label>
+                                    <textarea class="form-control" id="ic-special-instructions" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <div class="form-group">
+                                    <label>Internal Note</label>
+                                    <textarea class="form-control" id="ic-internal-note" rows="3"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="save-interested-carrier-btn">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- ./ INTERESTED CARRIERS MODAL -->
+
   </div>
   <!-- /.content-wrapper -->
   <footer class="main-footer">
@@ -875,7 +1028,7 @@
         "searching": true,
         "paging": true
     });
-    
+
     // New payment button handler
     $('#new-payment-btn').on('click', function() {
         $('#payment-modal').modal('show');
@@ -903,6 +1056,50 @@
         //alert('id: '+orderId);
         loadPaymentsByOrder(orderId);
     });
+
+
+     // Initialize datepickers
+    $('#ic-pickup-date, #ic-delivery-date').datetimepicker({
+        format: 'YYYY-MM-DD'
+    });
+
+    // Format input after date selection
+    $("#ic-pickup-date, #ic-delivery-date").on("change.datetimepicker", function(e) {
+        $(this).find('input').val(e.date.format('YYYY-MM-DD'));
+    });
+    
+    // Initialize select2
+    $('#ic-carrier-select, #ic-insurance-policy, #ic-driver').select2({
+        dropdownParent: $('#interested-carrier-modal')
+    });
+
+    // Load data when tab is clicked
+    $('#tab_interested_carriers').on('click', function() {
+        const orderId = $('#order_view_idOrder').text();
+        loadOrderInterestedCarriers(orderId);
+    });
+
+    // New button click handler
+    $('#new-interested-carrier-btn').on('click', function() {
+        load_carriers_select();
+        load_insurance_policies_select();
+        load_drivers_select();
+        $('#interested-carrier-modal').modal('show');
+    });
+
+    // Save button click handler
+    $('#save-interested-carrier-btn').on('click', function() {
+        const orderId = $('#order_view_idOrder').text();
+        saveOrderInterestedCarrier(orderId);
+    });
+
+    $('#ic-carrier-select').on('change', function() {
+        get_carrier_details($(this).val());
+    });
+
+    
+
+    
   })
 </script>
 <script type="text/javascript">

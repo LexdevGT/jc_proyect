@@ -311,6 +311,18 @@
 		   	case 'load_payments_by_order':
 		   		loadPaymentsByOrderFunction();
 		   		break;
+
+
+		   	case 'load_order_interested_carriers':
+		   		loadOrderInterestedCarriersFunction();
+		   		break;
+		   	case 'save_order_interested_carrier':
+		   		saveOrderInterestedCarrierFunction();
+		   		break;
+
+		   	case 'delete_interested_carrier':
+		   		deleteInterestedCarrierFunction();
+		   		break;
 		}
 	}
 
@@ -334,6 +346,100 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function deleteInterestedCarrierFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+	    
+	    $carrierId = $_POST['carrier_id'];
+	    $orderId = $_POST['order_id'];
+	    
+	    $query = "DELETE FROM interested_carriers WHERE id = ? AND order_id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("ii", $carrierId, $orderId);
+	    
+	    if ($stmt->execute()) {
+	        $jsondata['message'] = 'Interested carrier deleted successfully!';
+	    } else {
+	        $jsondata['error'] = 'Error deleting carrier: ' . $conn->error;
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function loadOrderInterestedCarriersFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+	    
+	    $orderId = $_POST['order_id'];
+	    
+	    $query = "SELECT ic.*, c.name as carrier_name, c.carrier_main_contact as contact, 
+	              c.phone, DATE_FORMAT(ic.pickup_date, '%Y-%m-%d') as pickup_date,
+	              DATE_FORMAT(ic.delivery_date, '%Y-%m-%d') as delivery_date
+	              FROM interested_carriers ic
+	              INNER JOIN carriers c ON ic.carrier_id = c.id
+	              WHERE ic.order_id = ?
+	              ORDER BY ic.date_created DESC";
+	              
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $orderId);
+	    
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading carriers: ' . $conn->error;
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function saveOrderInterestedCarrierFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+	    
+	    try {
+	        $carrierData = json_decode($_POST['carrier_data'], true);
+	        //error_log(print_r($_POST['carrier_data'],true));
+	        
+	        $query = "INSERT INTO interested_carriers (
+	            order_id, carrier_id, carrier_status, carrier_pay,
+	            special_instructions, internal_note, pickup_date,
+	            pickup_window, delivery_date, delivery_window, insurance_policy_id, driver_id
+	        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+	        
+	        $stmt = $conn->prepare($query);
+	        $stmt->bind_param(
+	            "iisdssssssii",
+	            $carrierData['order_id'],
+	            $carrierData['carrier_id'],
+	            $carrierData['carrier_status'],
+	            $carrierData['carrier_pay'],
+	            $carrierData['special_instructions'],
+	            $carrierData['internal_note'],
+	            $carrierData['pickup_date'],
+	            $carrierData['pickup_window'],
+	            $carrierData['delivery_date'],
+	            $carrierData['delivery_window'],
+	            $carrierData['insurance_policy_id'],
+	            $carrierData['driver_id']
+	        );
+	        
+	        if ($stmt->execute()) {
+	            $jsondata['message'] = 'Interested carrier saved successfully!';
+	        } else {
+	            throw new Exception($stmt->error);
+	            error_log($stmt->error);
+	        }
+	        
+	    } catch (Exception $e) {
+	        $jsondata['error'] = 'Error: ' . $e->getMessage();
+	    }
+	    
+	    echo json_encode($jsondata);
 	}
 
 	function loadPaymentsByOrderFunction() {

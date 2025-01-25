@@ -177,6 +177,105 @@ function new_function(){
   }
 }
 
+function loadOrderInterestedCarriers(orderId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'load_order_interested_carriers',
+            order_id: orderId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const table = $('#order-interested-carriers-table').DataTable();
+                table.clear();
+                
+                response.data.forEach(carrier => {
+                    table.row.add([
+                        carrier.carrier_name,
+                        carrier.carrier_status,
+                        carrier.contact,
+                        carrier.phone,
+                        carrier.pickup_date,
+                        carrier.delivery_date,
+                        `<button class="btn btn-sm btn-danger delete-interested-carrier" data-id="${carrier.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>`
+                    ]);
+                });
+                
+                table.draw();
+                
+                // Add delete event listener
+                $('.delete-interested-carrier').on('click', function() {
+                    const carrierId = $(this).data('id');
+                    deleteInterestedCarrier(carrierId, orderId);
+                });
+            }
+        }
+    });
+}
+
+function deleteInterestedCarrier(carrierId, orderId) {
+    if (confirm('Are you sure you want to delete this carrier?')) {
+        $.ajax({
+            type: "POST",
+            url: "../dist/php/services.php",
+            data: {
+                option: 'delete_interested_carrier',
+                carrier_id: carrierId,
+                order_id: orderId
+            },
+            dataType: "json",
+            success: function(response) {
+                if (response.error === '') {
+                    loadOrderInterestedCarriers(orderId);
+                    alert(response.message);
+                } else {
+                    alert(response.error);
+                }
+            }
+        });
+    }
+}
+
+function saveOrderInterestedCarrier(orderId) {
+    const carrierData = {
+        order_id: orderId,
+        carrier_id: $('#ic-carrier-select').val(),
+        carrier_status: $('#ic-status').val(),
+        carrier_pay: $('#ic-carrier-pay').val().replace('$', '').trim(),
+        special_instructions: $('#ic-special-instructions').val(),
+        internal_note: $('#ic-internal-note').val(),
+        pickup_date: $('#ic-pickup-date-input').val(),
+        pickup_window: $('#ic-pickup-window').val(),
+        delivery_date: $('#ic-delivery-date-input').val(),
+        delivery_window: $('#ic-pickup-window').val(),
+        insurance_policy_id: $('#ic-insurance-policy').val(),
+        driver_id: $('#ic-driver').val()
+    };
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_order_interested_carrier',
+            carrier_data: JSON.stringify(carrierData)
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                $('#interested-carrier-modal').modal('hide');
+                loadOrderInterestedCarriers(orderId);
+                alert(response.message);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
 function savePaymentFromOrder(paymentData) {
     if (!paymentData.order_id || !paymentData.payment_date || !paymentData.payment_type || 
         !paymentData.payment_direction || !paymentData.payment_amount) {
@@ -228,7 +327,7 @@ function deletePayment(paymentId) {
                 if (response.error === '') {
                     alert(response.message);
                     load_payments();
-                    
+
                     const orderId = $('#order_view_idOrder').text();
                     loadPaymentsByOrder(orderId);
                 } else {
@@ -1344,6 +1443,45 @@ function interested_carrier_save_button() {
 }
 
 // Función para cargar los drivers en el select
+function load_drivers_select(selectElementId = '#driver-name') {
+   $.ajax({
+       type: "POST",
+       url: "../dist/php/services.php",
+       data: { option: 'load_drivers_select' },
+       dataType: "json",
+       success: function(response) {
+           if (response.error === '') {
+               let html = '<option value="" selected disabled>Select a driver</option>';
+               response.data.forEach(driver => {
+                   html += `<option value="${driver.id}">${driver.name}</option>`;
+               });
+
+               const possibleSelectIds = [
+                   '#driver-name',     // For m_interested_carrier.html
+                   '#ic-driver'        // For order_view.html
+               ];
+
+               possibleSelectIds.forEach(selectId => {
+                   const $select = $(selectId);
+                   if ($select.length) {
+                       $select.html(html);
+                       
+                       // Add event listener for driver phone
+                       $select.on('change', function() {
+                           const selectedDriverId = $(this).val();
+                           if (selectedDriverId) {
+                               get_driver_phone(selectedDriverId);
+                           }
+                       });
+                   }
+               });
+           } else {
+               alert(response.error);
+           }
+       }
+   });
+}
+/*
 function load_drivers_select() {
     $.ajax({
         type: "POST",
@@ -1373,8 +1511,42 @@ function load_drivers_select() {
         }
     });
 }
+*/
 
 // Función para cargar las pólizas de seguro en el select
+function load_insurance_policies_select(selectElementId = '#insurance-policy') {
+   $.ajax({
+       type: "POST",
+       url: "../dist/php/services.php",
+       data: {
+           option: 'load_insurance_policies_select'
+       },
+       dataType: "json",
+       success: function(response) {
+           if (response.error === '') {
+               let html = '<option value="" disabled selected>Select an insurance policy</option>';
+               response.data.forEach(policy => {
+                   html += `<option value="${policy.id}">${policy.policy_number}</option>`;
+               });
+
+               const possibleSelectIds = [
+                   '#insurance-policy',    // For m_interested_carrier.html
+                   '#ic-insurance-policy'  // For order_view.html
+               ];
+
+               possibleSelectIds.forEach(selectId => {
+                   const $select = $(selectId);
+                   if ($select.length) {
+                       $select.html(html);
+                   }
+               });
+           } else {
+               alert(response.error);
+           }
+       }
+   });
+}
+/*
 function load_insurance_policies_select() {
     $.ajax({
         type: "POST",
@@ -1394,6 +1566,7 @@ function load_insurance_policies_select() {
         }
     });
 }
+*/
 
 // Función para obtener los detalles del carrier seleccionado
 function get_carrier_details(carrierId) {
@@ -1512,6 +1685,45 @@ function load_interested_carriers() {
 }
 
 // Función para cargar los carriers en el select
+function load_carriers_select(selectElementId = '#carrier-select') {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { 
+            option: 'load_carriers_select'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '<option value="" selected disabled>Select a carrier</option>';
+                response.data.forEach(carrier => {
+                    html += `<option value="${carrier.id}">${carrier.name}</option>`;
+                });
+                
+                // Update all possible carrier selects
+                const possibleSelectIds = [
+                    '#carrier-select',      // For m_interested_carrier.html
+                    '#ic-carrier-select'    // For order_view.html
+                ];
+
+                possibleSelectIds.forEach(selectId => {
+                    const $select = $(selectId);
+                    if ($select.length) {
+                        $select.html(html);
+                        
+                        // Add change event listener for carrier details
+                        $select.on('change', function() {
+                            get_carrier_details($(this).val());
+                        });
+                    }
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+/*
 function load_carriers_select(carrierId = 0) {
     $.ajax({
         type: "POST",
@@ -1541,6 +1753,7 @@ function load_carriers_select(carrierId = 0) {
         }
     });
 }
+*/
 
 // Función para obtener la información de un interested carrier
 function get_interested_carrier_info(id) {
