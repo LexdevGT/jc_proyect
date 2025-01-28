@@ -323,6 +323,14 @@
 		   	case 'delete_interested_carrier':
 		   		deleteInterestedCarrierFunction();
 		   		break;
+
+
+		   	case 'get_order_route_details':
+		   		getOrderRouteDetailsFunction();
+		   		break;
+		   	case 'save_route_details':
+		   		saveRouteDetailsFunction();
+		   		break;
 		}
 	}
 
@@ -346,6 +354,88 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function getOrderRouteDetailsFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+	    
+	    $orderId = $_POST['order_id'];
+	    $type = $_POST['type'];
+	    
+	    $prefix = $type === 'origin' ? 'origin' : 'destination';
+	    
+	    $query = "SELECT 
+	        {$prefix}_saved_contact as contact_name,
+	        {$prefix}_contact_phone_1 as contact_phone_1,
+	        {$prefix}_contact_email as contact_email,
+	        {$prefix}_address as address,
+	        {$prefix}_city as city,
+	        {$prefix}_state as state,
+	        {$prefix}_country as country,
+	        {$prefix}_contact_postal_code as postal_code
+	        FROM orders 
+	        WHERE id = ?";
+	    
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $orderId);
+	    
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $jsondata['data'] = $result->fetch_assoc();
+	    } else {
+	        $jsondata['error'] = 'Error fetching route details: ' . $conn->error;
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function saveRouteDetailsFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+	    
+	    $orderId = $_POST['order_id'];
+	    $type = $_POST['type'];
+	    $data = json_decode($_POST['data'], true);
+	    
+	    $prefix = $type === 'origin' ? 'origin' : 'destination';
+	    
+	    $query = "UPDATE orders SET 
+	        {$prefix}_saved_contact = ?,
+	        {$prefix}_contact_phone_1 = ?,
+	        {$prefix}_contact_email = ?,
+	        {$prefix}_address = ?,
+	        {$prefix}_city = ?,
+	        {$prefix}_state = ?,
+	        {$prefix}_country = ?,
+	        {$prefix}_contact_postal_code = ?
+	        WHERE id = ?";
+	    
+	    try {
+	        $stmt = $conn->prepare($query);
+	        $stmt->bind_param(
+	            "ssssssssi",
+	            $data['contact_name'],
+	            $data['contact_phone'],
+	            $data['contact_email'],
+	            $data['address'],
+	            $data['city'],
+	            $data['state'],
+	            $data['country'],
+	            $data['postal_code'],
+	            $orderId
+	        );
+	        
+	        if ($stmt->execute()) {
+	            $jsondata['message'] = ucfirst($type) . ' details updated successfully!';
+	        } else {
+	            throw new Exception($conn->error);
+	        }
+	    } catch (Exception $e) {
+	        $jsondata['error'] = 'Error updating route details: ' . $e->getMessage();
+	    }
+	    
+	    echo json_encode($jsondata);
 	}
 
 	function deleteInterestedCarrierFunction() {
