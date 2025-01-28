@@ -3204,14 +3204,14 @@ function load_order_view() {
                 $('#customer-email').text(order.customer_email || '');
                 
                 // Información de origen
-                $('#origin-contact').text(order.origin_contact_name || '');
+                $('#origin-contact').text(order.origin_saved_contact || '');
                 $('#origin-address').text(order.origin_address || '');
                 $('#origin-city').text(order.origin_city || '');
                 $('#origin-state').text(order.origin_state || '');
                 $('#origin-postal-code').text(order.origin_contact_postal_code || '');
                 
                 // Información de destino
-                $('#destination-contact').text(order.destination_contact_name || '');
+                $('#destination-contact').text(order.destination_saved_contact || '');
                 $('#destination-address').text(order.destination_address || '');
                 $('#destination-city').text(order.destination_city || '');
                 $('#destination-state').text(order.destination_state || '');
@@ -3225,6 +3225,14 @@ function load_order_view() {
                 
                 // Mantener el select del cliente deshabilitado también si existe
                 $('#select_customer').val(order.customer_name).prop('disabled', true).trigger('change');
+
+                $('#origin-contact, #origin-address').parent().parent().on('click', function() {
+                    openOriginModal();
+                });
+
+                $('#destination-contact, #destination-address').parent().parent().on('click', function() {
+                    openDestinationModal();
+                });
                 
             } else {
                 alert(response.error);
@@ -3232,6 +3240,114 @@ function load_order_view() {
         },
         error: function(xhr, status, error) {
             alert('Error loading order data: ' + error);
+        }
+    });
+}
+
+function openOriginModal() {
+    const orderId = $('#order_view_idOrder').text();
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_order_route_details',
+            order_id: orderId,
+            type: 'origin'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                $('#origin-contact-name-input').val(response.data.contact_name);
+                $('#origin-contact-phone-input').val(response.data.contact_phone_1);
+                $('#origin-contact-email-input').val(response.data.contact_email);
+                $('#origin-address-input').val(response.data.address);
+                $('#origin-city-input').val(response.data.city);
+                $('#origin-state-input').val(response.data.state);
+                $('#origin-country-input').val(response.data.country);
+                $('#origin-postal-code-input').val(response.data.postal_code);
+                $('#origin-modal').modal('show');
+
+                $('#save-origin-btn').click(function() {
+                    saveRouteDetails('origin');
+                });
+
+                $('#save-destination-btn').click(function() {
+                    saveRouteDetails('destination');
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function openDestinationModal() {
+    const orderId = $('#order_view_idOrder').text();
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'get_order_route_details',
+            order_id: orderId,
+            type: 'destination'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                $('#destination-contact-name-input').val(response.data.contact_name);
+                $('#destination-contact-phone-input').val(response.data.contact_phone_1);
+                $('#destination-contact-email-input').val(response.data.contact_email);
+                $('#destination-address-input').val(response.data.address);
+                $('#destination-city-input').val(response.data.city);
+                $('#destination-state-input').val(response.data.state);
+                $('#destination-country-input').val(response.data.country);
+                $('#destination-postal-code-input').val(response.data.postal_code);
+                $('#destination-modal').modal('show');
+                $('#save-origin-btn').click(function() {
+                    saveRouteDetails('origin');
+                });
+
+                $('#save-destination-btn').click(function() {
+                    saveRouteDetails('destination');
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function saveRouteDetails(type) {
+    const orderId = $('#order_view_idOrder').text();
+    const data = {
+        contact_name: $(`#${type}-contact-name-input`).val(),
+        contact_phone: $(`#${type}-contact-phone-input`).val(),
+        contact_email: $(`#${type}-contact-email-input`).val(),
+        address: $(`#${type}-address-input`).val(),
+        city: $(`#${type}-city-input`).val(),
+        state: $(`#${type}-state-input`).val(),
+        country: $(`#${type}-country-input`).val(),
+        postal_code: $(`#${type}-postal-code-input`).val()
+    };
+
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'save_route_details',
+            order_id: orderId,
+            type: type,
+            data: JSON.stringify(data)
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                $(`#${type}-modal`).modal('hide');
+                load_order_view(); // Reload order details
+                alert(response.message);
+            } else {
+                alert(response.error);
+            }
         }
     });
 }
