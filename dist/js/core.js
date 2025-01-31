@@ -2462,30 +2462,49 @@ function clear_customer_form() {
 
 // Función para guardar un nuevo cliente o actualizar uno existente
 function customer_save_button() {
-  let customerData = {
-    first_name: $('#customer-firstname-txt').val(),
-    last_name: $('#customer-lastname-txt').val(),
+  // Obtener los valores principales que son requeridos
+  const email = $('#customer-email1-txt').val().trim();
+  const phone = $('#customer-phone1-txt').val().trim();
+  const assigned_user_id = $('#customer-user-select').val();
+
+  // Validar campos requeridos
+  const missingFields = [];
+  if (!email) missingFields.push('Email');
+  if (!phone) missingFields.push('Phone');
+  if (!assigned_user_id) missingFields.push('Assigned User');
+  
+  if (missingFields.length > 0) {
+    // Usar comillas invertidas (backticks) para interpolación de variables
+    alert(`${missingFields.join(' and ')} ${missingFields.length > 1 ? 'are' : 'is'} required.`);
+    return;
+  }
+
+  // Si pasó la validación, crear el objeto de datos
+  const customerData = {
+    first_name: $('#customer-firstname-txt').val().trim(),
+    last_name: $('#customer-lastname-txt').val().trim(),
     company_id: $('#customer-company-select').val(),
-    phone1: $('#customer-phone1-txt').val(),
+    phone1: phone,
     is_mobile1: $('#customer-ismobile1-switch').is(':checked') ? 1 : 0,
-    email1: $('#customer-email1-txt').val(),
-    phone2: $('#customer-phone2-txt').val(),
+    email1: email,
+    phone2: $('#customer-phone2-txt').val().trim(),
     is_mobile2: $('#customer-ismobile2-switch').is(':checked') ? 1 : 0,
-    email2: $('#customer-email2-txt').val(),
-    address1: $('#customer-address1-txt').val(),
-    address2: $('#customer-address2-txt').val(),
-    city: $('#customer-city-txt').val(),
-    state: $('#customer-state-txt').val(),
-    zip: $('#customer-zip-txt').val(),
-    country: $('#customer-country-txt').val(),
+    email2: $('#customer-email2-txt').val().trim(),
+    address1: $('#customer-address1-txt').val().trim(),
+    address2: $('#customer-address2-txt').val().trim(),
+    city: $('#customer-city-txt').val().trim(),
+    state: $('#customer-state-txt').val().trim(),
+    zip: $('#customer-zip-txt').val().trim(),
+    country: $('#customer-country-txt').val().trim(),
     referral_source_id: $('#customer-referral-select').val(),
     assigned_user_id: $('#customer-user-select').val(),
     assigned_team_id: $('#customer-team-select').val(),
     additional_info: $('#customer-additional-info-txt').summernote('code')
   };
 
-  let customerId = $('#btn-save-customer').data('customer-id');
+  const customerId = $('#btn-save-customer').data('customer-id');
 
+  // Realizar la petición AJAX
   $.ajax({
     type: "POST",
     url: "../dist/php/services.php",
@@ -2498,11 +2517,17 @@ function customer_save_button() {
     success: function(response) {
       if (response.error === '') {
         alert(response.message);
-        load_customers(); // Recargar la lista de clientes
-        clear_customer_form(); // Limpiar el formulario
+        load_customers();
+        clear_customer_form();
       } else {
-        alert(response.error);
+        const errorMessage = response.error.includes('Duplicate entry') ? 
+          'Customer already exists' : 
+          response.error;
+        alert(errorMessage);
       }
+    },
+    error: function(xhr, status, error) {
+      alert('Error saving customer: ' + error);
     }
   });
 }

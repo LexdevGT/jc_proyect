@@ -2242,36 +2242,45 @@ function saveInterestedCarrierFunction() {
 	}
 
 	function loadCustomersFunction() {
-	  global $conn;
-	  $jsondata = ['error' => '', 'data' => []];
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+	    $user_id  = $_SESSION['user_id'];
+	    $user_role = $_SESSION['user_role'];
 
-	  $query = "SELECT 
-	              c.id, 
-	              c.first_name, 
-	              c.last_name, 
-	              cs.company_name, 
-	              c.phone1, 
-	              c.email1, 
-	              c.city, 
-	              t.name as assigned_team_name,
-	              DATE_FORMAT(c.date_created, '%d-%m-%Y') as date_created,
-	              c.status
-	           FROM customers c
-	           LEFT JOIN companies_software cs ON c.company_id = cs.id
-	           LEFT JOIN teams t ON c.assigned_team_id = t.id
-	           ORDER BY c.first_name, c.last_name";
+	    $query = "SELECT 
+	                c.id, 
+	                c.first_name, 
+	                c.last_name, 
+	                cs.company_name, 
+	                c.phone1, 
+	                c.email1, 
+	                c.city, 
+	                t.name as assigned_team_name,
+	                DATE_FORMAT(c.date_created, '%d-%m-%Y') as date_created,
+	                c.status
+	             FROM customers c
+	             LEFT JOIN companies_software cs ON c.company_id = cs.id
+	             LEFT JOIN teams t ON c.assigned_team_id = t.id";
 
-	  $result = $conn->query($query);
-
-	  if ($result) {
-	    while ($row = $result->fetch_assoc()) {
-	      $jsondata['data'][] = $row;
+	    // Agregar la cláusula WHERE solo si el rol no es 1
+	    if ($user_role != 1) {
+	        $query .= " WHERE c.assigned_user_id = $user_id";
 	    }
-	  } else {
-	    $jsondata['error'] = 'Error loading customers';
-	  }
 
-	  echo json_encode($jsondata);
+	    // Agregar el ORDER BY al final
+	    $query .= " ORDER BY c.first_name, c.last_name";
+
+	    $result = $conn->query($query);
+	    
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = $row;
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading customers: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
 	}
 
 	function saveCustomerFunction() {
