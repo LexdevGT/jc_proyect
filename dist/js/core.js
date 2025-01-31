@@ -388,6 +388,8 @@ function loadOrderVehicles() {
                            <td>${vehicle.make}</td>
                            <td>${vehicle.model}</td>
                            <td>${vehicle.vehicle_type}</td>
+                           <td>${vehicle.weight || ''} ${vehicle.weight_measure || ''}</td>
+                           <td>${vehicle.vehicle_length || ''} x ${vehicle.vehicle_width || ''} x ${vehicle.vehicle_height || ''}</td>
                            <td>${vehicle.vin || ''}</td>
                            <td>${vehicle.plate_no || ''}</td>
                            <td>${vehicle.lot_no || ''}</td>
@@ -416,14 +418,20 @@ function loadOrderVehicles() {
 }
 
 function save_order_vehicle(){
+    
     const orderId = $('#order_view_idOrder').text();
     const vehicleData = {
         vehicle_id: $('#order-modal-select-vehicle').val(),
-        carrier_pay: $('#carrier_pay').val().replace('$', '').trim(),
-        broker_fee: $('#broker_pay').val().replace('$', '').trim(),
-        wrecker_fee: $('#wrecker_pay').val().replace('$', '').trim(),
-        other_fee: $('#other_pay').val().replace('$', '').trim(),
-        vehicle_tariff: $('#total_tariff').val().replace('$', '').trim(),
+        carrier_pay: $('#order-modal-input-carrier-pay').val().replace('$', '').trim(),
+        broker_fee: $('#order-modal-input-broker-fee').val().replace('$', '').trim(),
+        wrecker_fee: $('#order-modal-input-wrecker-fee').val().replace('$', '').trim(),
+        other_fee: $('#order-modal-input-other-fee').val().replace('$', '').trim(),
+        vehicle_tariff: $('#order-modal-input-tariff').val().replace('$', '').trim(),
+        weight: $('#order-modal-input-weight').val(),
+        weight_measure: $('#order-modal-input-weight-measure').val(),
+        vehicle_length: $('#order-modal-input-length').val(),
+        vehicle_width: $('#order-modal-input-width').val(),
+        vehicle_height: $('#order-modal-input-height').val(),
         vin: $('#order-modal-input-vin').val(),
         plate_no: $('#order-modal-input-plateno').val(),
         lot_no: $('#order-modal-input-lotno').val(),
@@ -475,15 +483,20 @@ function getVehicleDetails(){
                     $('#order-modal-input-make').val(vehicle.make);
                     $('#order-modal-input-model').val(vehicle.model);
                     $('#order-modal-input-type').val(vehicle.vehicle_type);
-
+                    $('#order-modal-input-weight').val(vehicle.weight);
+                    $('#order-modal-input-weight-measure').val(vehicle.weight_measure);
+                    $('#order-modal-input-length').val(vehicle.vehicle_length);
+                    $('#order-modal-input-width').val(vehicle.vehicle_width);
+                    $('#order-modal-input-height').val(vehicle.vehicle_height);
+                    
                     // Si hay datos previos del vehículo en la orden
-                   if(vehicle.vin) {
-                       $('#order-modal-input-vin').val(vehicle.vin);
-                       $('#order-modal-input-plateno').val(vehicle.plate_no);
-                       $('#order-modal-input-lotno').val(vehicle.lot_no);
-                       $('#order-modal-input-color').val(vehicle.color);
-                       $('#order-modal-input-inop').prop('checked', vehicle.inop == 1);
-                   }
+                    if(vehicle.vin) {
+                        $('#order-modal-input-vin').val(vehicle.vin);
+                        $('#order-modal-input-plateno').val(vehicle.plate_no);
+                        $('#order-modal-input-lotno').val(vehicle.lot_no);
+                        $('#order-modal-input-color').val(vehicle.color);
+                        $('#order-modal-input-inop').prop('checked', vehicle.inop == 1);
+                    }
                 } else {
                     alert(response.error);
                 }

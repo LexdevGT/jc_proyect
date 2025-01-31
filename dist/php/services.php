@@ -699,104 +699,135 @@
 	}
 
 	function saveOrderVehicleFunction() {
-	   global $conn;
-	   $jsondata = ['error' => '', 'message' => ''];
-	   
-	   try {
-	       $conn->begin_transaction();
-	       
-	       $orderId = $_POST['order_id'];
-	       $vehicleData = json_decode($_POST['vehicle_data'], true);
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+	    
+	    try {
+	        $conn->begin_transaction();
+	        
+	        $orderId = $_POST['order_id'];
+	        $vehicleData = json_decode($_POST['vehicle_data'], true);
 
-	       // Verificar si ya existe
-	       $checkQuery = "SELECT id FROM orders_vehicles 
+	        // Verificar si ya existe
+	        $checkQuery = "SELECT id FROM orders_vehicles 
+	                      WHERE order_id = ? AND vehicle_id = ?";
+	        $stmt = $conn->prepare($checkQuery);
+	        $stmt->bind_param("ii", $orderId, $vehicleData['vehicle_id']);
+	        $stmt->execute();
+	        $result = $stmt->get_result();
+	        
+	        if ($result->num_rows > 0) {
+	            // Update
+	            $query = "UPDATE orders_vehicles SET 
+	                     vehicle_tariff = ?,
+	                     weight = ?,
+	                     weight_measure = ?,
+	                     vehicle_length = ?,
+	                     vehicle_width = ?,
+	                     vehicle_height = ?,
+	                     vin = ?,
+	                     plate_no = ?,
+	                     lot_no = ?,
+	                     color = ?,
+	                     inop = ?,
+	                     broker_fee = ?,
+	                     wrecker_fee = ?,
+	                     other_fee = ?,
+	                     carrier_pay = ?
 	                     WHERE order_id = ? AND vehicle_id = ?";
-	       $stmt = $conn->prepare($checkQuery);
-	       $stmt->bind_param("ii", $orderId, $vehicleData['vehicle_id']);
-	       $stmt->execute();
-	       $result = $stmt->get_result();
-	       
-	       if ($result->num_rows > 0) {
-	           // Update
-	           $query = "UPDATE orders_vehicles SET 
-	                    vehicle_tariff = ?,
-	                    vin = ?,
-	                    plate_no = ?,
-	                    lot_no = ?,
-	                    color = ?,
-	                    inop = ?
-	                    WHERE order_id = ? AND vehicle_id = ?";
-	                    
-	           $stmt = $conn->prepare($query);
-	           $stmt->bind_param(
-	               "sssssiis",
-	               $vehicleData['vehicle_tariff'],
-	               $vehicleData['vin'],
-	               $vehicleData['plate_no'],
-	               $vehicleData['lot_no'],
-	               $vehicleData['color'],
-	               $vehicleData['inop'],
-	               $orderId,
-	               $vehicleData['vehicle_id']
-	           );
-	       } else {
-	           // Insert
-	           $query = "INSERT INTO orders_vehicles (
-	               order_id, vehicle_id, vehicle_tariff, vin,
-	               plate_no, lot_no, color, inop
-	           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-	           
-	           $stmt = $conn->prepare($query);
-	           $stmt->bind_param(
-	               "iisssssi",
-	               $orderId,
-	               $vehicleData['vehicle_id'],
-	               $vehicleData['vehicle_tariff'],
-	               $vehicleData['vin'],
-	               $vehicleData['plate_no'],
-	               $vehicleData['lot_no'],
-	               $vehicleData['color'],
-	               $vehicleData['inop']
-	           );
-	       }
+	                     
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param(
+	                "sdssssssssiddddii",
+	                $vehicleData['vehicle_tariff'],
+	                $vehicleData['weight'],
+	                $vehicleData['weight_measure'],
+	                $vehicleData['vehicle_length'],
+	                $vehicleData['vehicle_width'],
+	                $vehicleData['vehicle_height'],
+	                $vehicleData['vin'],
+	                $vehicleData['plate_no'],
+	                $vehicleData['lot_no'],
+	                $vehicleData['color'],
+	                $vehicleData['inop'],
+	                $vehicleData['broker_fee'],
+	                $vehicleData['wrecker_fee'],
+	                $vehicleData['other_fee'],
+	                $vehicleData['carrier_pay'],
+	                $orderId,
+	                $vehicleData['vehicle_id']
+	            );
+	        } else {
+	            // Insert
+	            $query = "INSERT INTO orders_vehicles (
+	                order_id, vehicle_id, vehicle_tariff, weight, weight_measure,
+	                vehicle_length, vehicle_width, vehicle_height,
+	                vin, plate_no, lot_no, color, inop, carrier_pay, broker_fee, wrecker_fee, other_fee
+	            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+	            
+	            $stmt = $conn->prepare($query);
+	            $stmt->bind_param(
+	                "iiddssssssssidddd",
+	                $orderId,
+	                $vehicleData['vehicle_id'],
+	                $vehicleData['vehicle_tariff'],
+	                $vehicleData['weight'],
+	                $vehicleData['weight_measure'],
+	                $vehicleData['vehicle_length'],
+	                $vehicleData['vehicle_width'],
+	                $vehicleData['vehicle_height'],
+	                $vehicleData['vin'],
+	                $vehicleData['plate_no'],
+	                $vehicleData['lot_no'],
+	                $vehicleData['color'],
+	                $vehicleData['inop'],
+	                $vehicleData['carrier_pay'],
+	                $vehicleData['broker_fee'],
+	                $vehicleData['wrecker_fee'],
+	                $vehicleData['other_fee']
+	            );
+	        }
+	        
+	        if (!$stmt->execute()) {
+	            throw new Exception("Error saving vehicle: " . $stmt->error);
+	        }
 
-	       if (!$stmt->execute()) {
-	           throw new Exception("Error saving vehicle: " . $stmt->error);
-	       }
+	        // Update order fees
+	        // ESTO QUEDA COMENTADO YA QUE DESDE ACA NO HAY QUE HACER CAMBIOS A LOS FEES DE LA ORDEN
+	        /*
+	        $updateOrder = "UPDATE orders SET
+	                       total_tariff = ?,
+	                       carrier_pay = ?,
+	                       broker_fee = ?,
+	                       wrecker_fee = ?,
+	                       other_fee = ?
+	                       WHERE id = ?";
+	                       
+	        $stmt = $conn->prepare($updateOrder);
+	        $stmt->bind_param(
+	            "dddddi",
+	            $vehicleData['vehicle_tariff'],
+	            $vehicleData['carrier_pay'],
+	            $vehicleData['broker_fee'],
+	            $vehicleData['wrecker_fee'],
+	            $vehicleData['other_fee'],
+	            $orderId
+	        );
 
-	       // Update order fees
-	       $updateOrder = "UPDATE orders SET
-	                      total_tariff = ?,
-	                      carrier_pay = ?,
-	                      broker_fee = ?,
-	                      wrecker_fee = ?,
-	                      other_fee = ?
-	                      WHERE id = ?";
-	                      
-	       $stmt = $conn->prepare($updateOrder);
-	       $stmt->bind_param(
-	           "dddddi",
-	           $vehicleData['vehicle_tariff'],
-	           $vehicleData['carrier_pay'],
-	           $vehicleData['broker_fee'],
-	           $vehicleData['wrecker_fee'],
-	           $vehicleData['other_fee'],
-	           $orderId
-	       );
-
-	       if (!$stmt->execute()) {
-	           throw new Exception("Error updating order fees: " . $stmt->error);
-	       }
-	       
-	       $conn->commit();
-	       $jsondata['message'] = 'Vehicle and order fees updated successfully!';
-	       
-	   } catch (Exception $e) {
-	       $conn->rollback();
-	       $jsondata['error'] = $e->getMessage();
-	   }
-	   
-	   echo json_encode($jsondata);
+	        if (!$stmt->execute()) {
+	            throw new Exception("Error updating order fees: " . $stmt->error);
+	        }
+	        */
+	        
+	        $conn->commit();
+	        $jsondata['message'] = 'Vehicle and order fees updated successfully!';
+	        
+	    } catch (Exception $e) {
+	        $conn->rollback();
+	        $jsondata['error'] = $e->getMessage();
+	    }
+	    
+	    echo json_encode($jsondata);
 	}
 
 	function getVehicleDetailsFunction() {
@@ -811,7 +842,8 @@
 	              FROM vehicles 
 	              WHERE id = ?";*/
 
-	    $query = "SELECT v.model_year, v.make, v.model, v.vehicle_type, ov.vin, ov.plate_no, ov.lot_no ,ov.color ,ov.inop  
+	    $query = "SELECT v.model_year, v.make, v.model, v.vehicle_type, ov.vin, ov.plate_no, ov.lot_no ,ov.color ,ov.inop
+	    			,v.weight,v.weight_measure,v.vehicle_length,v.vehicle_width,v.vehicle_height  
 	              FROM vehicles v
 	              LEFT JOIN orders_vehicles ov 
 	              ON ov.order_id = ?
