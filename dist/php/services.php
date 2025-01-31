@@ -331,6 +331,10 @@
 		   	case 'save_route_details':
 		   		saveRouteDetailsFunction();
 		   		break;
+
+		   	case 'update_order_totals':
+			    updateOrderTotalsFunction();
+			    break;
 		}
 	}
 
@@ -677,11 +681,13 @@
 	   
 	   $orderId = $_POST['order_id'];
 	   
-	   $query = "SELECT ov.*, v.model_year, v.make, v.model, v.vehicle_type
-	             FROM orders_vehicles ov
-	             INNER JOIN vehicles v ON ov.vehicle_id = v.id
-	             WHERE ov.order_id = ?
-	             ORDER BY v.model_year DESC";
+	   $query = "SELECT ov.*, v.model_year, v.make, v.model, v.vehicle_type,
+                     ov.carrier_pay, ov.broker_fee, ov.wrecker_fee, ov.other_fee,
+                     ov.vehicle_tariff
+              FROM orders_vehicles ov
+              INNER JOIN vehicles v ON ov.vehicle_id = v.id
+              WHERE ov.order_id = ?
+              ORDER BY v.model_year DESC";
 	             
 	   $stmt = $conn->prepare($query);
 	   $stmt->bind_param("i", $orderId);
@@ -696,6 +702,51 @@
 	   }
 	   
 	   echo json_encode($jsondata);
+	}
+
+	// Función para actualizar los totales de la orden
+	function updateOrderTotalsFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    try {
+	        $orderId = $_POST['order_id'];
+	        $totalTariff = $_POST['total_tariff'];
+	        $carrierPay = $_POST['carrier_pay'];
+	        $brokerFee = $_POST['broker_fee'];
+	        $wreckerFee = $_POST['wrecker_fee'];
+	        $otherFee = $_POST['other_fee'];
+
+	        $query = "UPDATE orders SET 
+	                    total_tariff = ?,
+	                    carrier_pay = ?,
+	                    broker_fee = ?,
+	                    wrecker_fee = ?,
+	                    other_fee = ?
+	                 WHERE id = ?";
+
+	        $stmt = $conn->prepare($query);
+	        $stmt->bind_param(
+	            "dddddi",
+	            $totalTariff,
+	            $carrierPay,
+	            $brokerFee,
+	            $wreckerFee,
+	            $otherFee,
+	            $orderId
+	        );
+
+	        if (!$stmt->execute()) {
+	            throw new Exception("Error updating order totals: " . $stmt->error);
+	        }
+
+	        $jsondata['message'] = 'Order totals updated successfully';
+
+	    } catch (Exception $e) {
+	        $jsondata['error'] = $e->getMessage();
+	    }
+
+	    echo json_encode($jsondata);
 	}
 
 	function saveOrderVehicleFunction() {

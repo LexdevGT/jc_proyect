@@ -365,6 +365,74 @@ function load_vehicle_action_buttons_functions(){
     });
 }
 
+// Función para calcular los totales de la orden
+function calculateOrderTotals(orderId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'load_order_vehicles',
+            order_id: orderId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let totals = {
+                    carrier_pay: 0,
+                    broker_fee: 0,
+                    wrecker_fee: 0,
+                    other_fee: 0
+                };
+
+                // Calcular totales de todos los vehículos
+                response.data.forEach(vehicle => {
+                    totals.carrier_pay += parseFloat(vehicle.carrier_pay) || 0;
+                    totals.broker_fee += parseFloat(vehicle.broker_fee) || 0;
+                    totals.wrecker_fee += parseFloat(vehicle.wrecker_fee) || 0;
+                    totals.other_fee += parseFloat(vehicle.other_fee) || 0;
+                });
+
+                // Calcular el total_tariff como la suma de todos los fees
+                const total_tariff = totals.carrier_pay + totals.broker_fee + 
+                                   totals.wrecker_fee + totals.other_fee;
+
+                // Actualizar la UI con los valores formateados
+                $('#carrier_pay').val('$' + totals.carrier_pay.toFixed(2));
+                $('#broker_pay').val('$' + totals.broker_fee.toFixed(2));
+                $('#wrecker_pay').val('$' + totals.wrecker_fee.toFixed(2));
+                $('#other_pay').val('$' + totals.other_fee.toFixed(2));
+                $('#total_tariff').val('$' + total_tariff.toFixed(2));
+
+                // Guardar los totales actualizados
+                updateOrderTotals(orderId, totals, total_tariff);
+            }
+        }
+    });
+}
+
+// Función para actualizar los totales en la base de datos
+function updateOrderTotals(orderId, totals, total_tariff) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'update_order_totals',
+            order_id: orderId,
+            total_tariff: total_tariff,
+            carrier_pay: totals.carrier_pay,
+            broker_fee: totals.broker_fee,
+            wrecker_fee: totals.wrecker_fee,
+            other_fee: totals.other_fee
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error) {
+                console.error('Error updating order totals:', response.error);
+            }
+        }
+    });
+}
+
 // Función para cargar los vehículos de la orden
 function loadOrderVehicles() {
    const orderId = $('#order_view_idOrder').text();
@@ -410,6 +478,9 @@ function loadOrderVehicles() {
                });
                $('#vehicles-table tbody').html(html);
                load_vehicle_action_buttons_functions();
+
+               // Calcular los totales después de cargar los vehículos
+                calculateOrderTotals(orderId);
            } else {
                alert(response.error);
            }
@@ -454,7 +525,7 @@ function save_order_vehicle(){
                 loadOrderVehicles();
                 alert('Vehicle saved!');
 
-                load_order_view(); // Recargar toda la orden
+                //load_order_view(); // Recargar toda la orden
             } else {
                 alert(response.error);
             }
