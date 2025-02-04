@@ -335,6 +335,14 @@
 		   	case 'update_order_totals':
 			    updateOrderTotalsFunction();
 			    break;
+
+			case 'change_password':
+			    changePasswordFunction();
+			    break;
+
+			case 'get_user_session_info':
+			    getUserSessionInfoFunction();
+			    break;
 		}
 	}
 
@@ -358,6 +366,71 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	// Función para obtener la información de la sesión
+	function getUserSessionInfoFunction() {
+	    $jsondata = ['error' => '', 'data' => null];
+	    
+	    if (isset($_SESSION['user_id'])) {
+	        $jsondata['data'] = [
+	            'name' => $_SESSION['user_name'],
+	            'lastname' => $_SESSION['user_lastname'],
+	            'email' => $_SESSION['user_email'],
+	            'role' => $_SESSION['user_role']
+	        ];
+	    } else {
+	        $jsondata['error'] = 'No active session found';
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function changePasswordFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    if (!isset($_SESSION['user_id'])) {
+	        $jsondata['error'] = 'User session not found';
+	        echo json_encode($jsondata);
+	        return;
+	    }
+error_log('entrando');
+	    $userId = $_SESSION['user_id'];
+	    $currentPassword = $_POST['current_password'];
+	    $newPassword = $_POST['new_password'];
+
+	    try {
+	        // Verificar la contraseña actual
+	        $query = "SELECT code FROM users WHERE id = ?";
+	        $stmt = $conn->prepare($query);
+	        $stmt->bind_param("i", $userId);
+	        $stmt->execute();
+	        $result = $stmt->get_result();
+	        $user = $result->fetch_assoc();
+
+	        if (!password_verify($currentPassword, $user['code'])) {
+	            throw new Exception('Current password is incorrect');
+	        }
+
+	        // Actualizar con la nueva contraseña
+	        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+	        $updateQuery = "UPDATE users SET code = ? WHERE id = ?";
+	        $stmt = $conn->prepare($updateQuery);
+	        $stmt->bind_param("si", $hashedPassword, $userId);
+
+	        if ($stmt->execute()) {
+	            $jsondata['message'] = 'Password changed successfully!';
+	        } else {
+	            throw new Exception('Error updating password');
+	        }
+
+	    } catch (Exception $e) {
+	        $jsondata['error'] = $e->getMessage();
+	    }
+	    error_log('entrando');
+error_log(print_r($jsondata,true));
+	    echo json_encode($jsondata);
 	}
 
 	function getOrderRouteDetailsFunction() {
