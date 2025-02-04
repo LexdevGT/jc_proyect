@@ -177,6 +177,160 @@ function new_function(){
   }
 }
 
+
+// Función para inicializar el menú de usuario
+function initializeUserMenu() {
+
+    const basePath = getBasePath();
+    completePath = `${basePath}dist/php/services.php`;
+    
+    // Obtener el nombre del usuario mediante una llamada AJAX
+    $.ajax({
+        type: "POST",
+        url: completePath,
+        data: {
+            option: 'get_user_session_info'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const username = `${response.data.name} ${response.data.lastname}`;
+                
+                // Reemplazar el actual enlace de usuario con el nuevo menú
+                $('.nav-link:contains("User Name")').replaceWith(`
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown">
+                            ${username}
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-right">
+                            <a class="dropdown-item" href="#" id="userSettings">
+                                <i class="fas fa-cog mr-2"></i> Change Password
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a class="dropdown-item text-danger" href="#" id="userLogout">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                `);
+
+                // Agregar el modal de cambio de contraseña si no existe
+                if ($('#changePasswordModal').length === 0) {
+                    $('body').append(`
+                        <div class="modal fade" id="changePasswordModal" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Change Password</h5>
+                                        <button type="button" class="close" data-dismiss="modal">
+                                            <span>&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form id="changePasswordForm">
+                                            <div class="form-group">
+                                                <label>Current Password</label>
+                                                <input type="password" class="form-control" id="currentPassword" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>New Password</label>
+                                                <input type="password" class="form-control" id="newPassword" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Confirm New Password</label>
+                                                <input type="password" class="form-control" id="confirmPassword" required>
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                        <button type="button" class="btn btn-primary" id="savePasswordBtn">Save Changes</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                }
+
+                // Event listeners
+                $('#userSettings').click(function(e) {
+                    e.preventDefault();
+                    $('#changePasswordModal').modal('show');
+                });
+
+                $('#userLogout').click(function(e) {
+                    e.preventDefault();
+                    logout();
+                });
+
+                $('#savePasswordBtn').click(function() {
+                    changePassword();
+                });
+            }
+        }
+    });
+}
+
+// Función para cambiar la contraseña
+function changePassword() {
+    const basePath = getBasePath();
+    completePath = `${basePath}dist/php/services.php`;
+
+    const currentPassword = $('#currentPassword').val();
+    const newPassword = $('#newPassword').val();
+    const confirmPassword = $('#confirmPassword').val();
+
+    if (newPassword !== confirmPassword) {
+        alert('New passwords do not match!');
+        return;
+    }
+
+    $.ajax({
+        type: "POST",
+        url: completePath,
+        data: {
+            option: 'change_password',
+            current_password: currentPassword,
+            new_password: newPassword
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                alert(response.message);
+                $('#changePasswordModal').modal('hide');
+                $('#changePasswordForm')[0].reset();
+            } else {
+                alert(response.error);
+            }
+        },
+        error: function() {
+            alert('Error changing password. Please try again.');
+        }
+    });
+}
+
+function logout() {
+    const basePath = getBasePath();
+    completePath = `${basePath}dist/php/services.php`;
+    console.log(completePath);
+    $.ajax({
+        type: "POST",
+        url: completePath,
+        data: {
+            option: 'logout'
+        },
+        dataType: "json",
+        success: function(response) {
+            const currentPath = window.location.pathname;
+            const redirectPath = currentPath.endsWith('dashboard.html') ? 'index.html' : '../index.html';
+            window.location.replace(redirectPath);
+        },
+        error: function() {
+            alert('Error during logout. Please try again.');
+        }
+    });
+}
+
 function loadOrderInterestedCarriers(orderId) {
     $.ajax({
         type: "POST",
@@ -3461,96 +3615,6 @@ function saveRouteDetails(type) {
     });
 }
 
-/*
-function load_order_view() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const orderId = urlParams.get('id');
-    
-    if (!orderId) {
-        alert('No order ID specified');
-        return;
-    }else{
-        $('#order_view_idOrder').html(orderId);
-    }
-    
-    $.ajax({
-        type: "POST",
-        url: "../dist/php/services.php",
-        data: {
-            option: 'get_order_info',
-            order_id: orderId
-        },
-        dataType: "json",
-        success: function(response) {
-            if (response.error === '') {
-                const order = response.data;
-                
-                // Cargar los selects con los valores seleccionados
-                load_select_transport_type(order.transport_type_id, '#transport-type');
-                load_select_user(order.assigned_user_id,'#select_assigned_user');
-                console.log('Referral Source ID: '+order.order_referral_source_id);
-                load_select_referral_sources(order.order_referral_source_id);
-               
-                 // Obtener y cargar el equipo del usuario asignado
-                
-                if (order.assigned_user_id) {
-                    
-                    $.ajax({
-                        type: "POST",
-                        url: "../dist/php/services.php",
-                        data: {
-                            option: 'get_user_team',
-                            user_id: order.assigned_user_id
-                        },
-                        dataType: "json",
-                        success: function(teamResponse) {
-                            
-                            if (teamResponse.error === '' && teamResponse.data) {
-                                load_select_team(teamResponse.data.id, '#select_assigned_team');
-                                
-                            }else{
-                                load_select_team(0, '#select_assigned_team');
-                            }
-                        }
-                    });
-                }
-
-                // Llenar los campos con los datos disponibles
-                //console.log(order.creation_date);
-                $('#order-created').val(order.creation_date);
-                $('#order-status').val(order.status);
-                $('#first-available-pickup-date').val(order.pickup_date);
-                
-                // Información del cliente
-                $('#customer-name').text(order.customer_name || '');
-                $('#customer-phone').text(order.customer_phone || '');
-                $('#customer-email').text(order.customer_email || '');
-                
-                // Información de origen
-                $('#origin-contact').text(order.origin_contact_name || '');
-                $('#origin-address').text(order.origin_address || '');
-                $('#origin-city').text(order.origin_city || '');
-                $('#origin-state').text(order.origin_state || '');
-                $('#origin-postal-code').text(order.origin_contact_postal_code || '');
-                
-                // Información de destino
-                $('#destination-contact').text(order.destination_contact_name || '');
-                $('#destination-address').text(order.destination_address || '');
-                $('#destination-city').text(order.destination_city || '');
-                $('#destination-state').text(order.destination_state || '');
-                $('#destination-postal-code').text(order.destination_contact_postal_code || '');
-                
-            } else {
-                alert(response.error);
-            }
-        },
-        error: function(xhr, status, error) {
-            alert('Error loading order data: ' + error);
-        }
-    });
-}
-*/
-
 // Función para cargar los datos de global search al iniciar.
 function load_global_search() {
     let table = $('#example1').DataTable({
@@ -4727,6 +4791,7 @@ function role_page_save_button(){
     }
 }
 
+/*
 function logout() {
   $.ajax({
       type: "POST",
@@ -4741,6 +4806,7 @@ function logout() {
       }
   });
 }
+*/
 
 function sign_in() {
   var email = $('#email').val();
@@ -4781,10 +4847,14 @@ function sign_in() {
   }
 }
 
+
 function getBasePath() {
     const currentPath = window.location.pathname;
+    const c = currentPath.includes('/pages/') ? '../' : '';
+    console.log(c);
     return currentPath.includes('/pages/') ? '../' : '';
 }
+
 
 // Función mejorada para generar URLs correctas
 function generateUrl(path) {
@@ -4813,11 +4883,6 @@ function generateUrl(path) {
 function load_sidebar(n = 0) {
     const basePath = getBasePath();
     const baseUrl = `${basePath}dist/php/services.php`;
-    
-    //console.log('Current path:', window.location.pathname);
-    //alert(window.location.pathname);
-    //console.log('Base path:', basePath);
-    //console.log('Loading sidebar from:', baseUrl);
 
     // Determinar si estamos en dashboard
     const isDashboard = window.location.pathname.endsWith('dashboard.html');
@@ -4836,9 +4901,6 @@ function load_sidebar(n = 0) {
             $("#left-nav-bar").html('<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading menu...</div>');
         },
         success: function(response) {
-            //alert('Es index: '+ isIndex);
-            //alert('Es root: '+ isRoot);
-            //console.log('Sidebar response:', response);
             
             if (response.error === 'Session expired or not authenticated' && !isIndex && !isRoot) {
                 //alert('entre al 1');
@@ -4880,6 +4942,12 @@ function load_sidebar(n = 0) {
                 console.error('Invalid sidebar data:', response);
                 $("#left-nav-bar").html('<div class="text-danger">Error loading menu structure</div>');
             }
+
+            setTimeout(function() {
+                // Inicializar el menú de usuario después de cargar el sidebar
+                console.log('llamando!');
+                initializeUserMenu();
+            }, 150);
         },
         error: function(xhr, status, error) {
             console.error('Ajax error:', {

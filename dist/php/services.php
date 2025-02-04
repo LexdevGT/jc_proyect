@@ -335,6 +335,14 @@
 		   	case 'update_order_totals':
 			    updateOrderTotalsFunction();
 			    break;
+
+			case 'change_password':
+			    changePasswordFunction();
+			    break;
+
+			case 'get_user_session_info':
+			    getUserSessionInfoFunction();
+			    break;
 		}
 	}
 
@@ -358,6 +366,71 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	// Función para obtener la información de la sesión
+	function getUserSessionInfoFunction() {
+	    $jsondata = ['error' => '', 'data' => null];
+	    
+	    if (isset($_SESSION['user_id'])) {
+	        $jsondata['data'] = [
+	            'name' => $_SESSION['user_name'],
+	            'lastname' => $_SESSION['user_lastname'],
+	            'email' => $_SESSION['user_email'],
+	            'role' => $_SESSION['user_role']
+	        ];
+	    } else {
+	        $jsondata['error'] = 'No active session found';
+	    }
+	    
+	    echo json_encode($jsondata);
+	}
+
+	function changePasswordFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'message' => ''];
+
+	    if (!isset($_SESSION['user_id'])) {
+	        $jsondata['error'] = 'User session not found';
+	        echo json_encode($jsondata);
+	        return;
+	    }
+error_log('entrando');
+	    $userId = $_SESSION['user_id'];
+	    $currentPassword = $_POST['current_password'];
+	    $newPassword = $_POST['new_password'];
+
+	    try {
+	        // Verificar la contraseña actual
+	        $query = "SELECT code FROM users WHERE id = ?";
+	        $stmt = $conn->prepare($query);
+	        $stmt->bind_param("i", $userId);
+	        $stmt->execute();
+	        $result = $stmt->get_result();
+	        $user = $result->fetch_assoc();
+
+	        if (!password_verify($currentPassword, $user['code'])) {
+	            throw new Exception('Current password is incorrect');
+	        }
+
+	        // Actualizar con la nueva contraseña
+	        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+	        $updateQuery = "UPDATE users SET code = ? WHERE id = ?";
+	        $stmt = $conn->prepare($updateQuery);
+	        $stmt->bind_param("si", $hashedPassword, $userId);
+
+	        if ($stmt->execute()) {
+	            $jsondata['message'] = 'Password changed successfully!';
+	        } else {
+	            throw new Exception('Error updating password');
+	        }
+
+	    } catch (Exception $e) {
+	        $jsondata['error'] = $e->getMessage();
+	    }
+	    error_log('entrando');
+error_log(print_r($jsondata,true));
+	    echo json_encode($jsondata);
 	}
 
 	function getOrderRouteDetailsFunction() {
@@ -2930,21 +3003,29 @@ function saveInterestedCarrierFunction() {
 
 	function loadGlobalSearchFunction(){
 		global $conn;
-		$jsondata = array();
-		$error = '';
-		$data = array();
+		$jsondata 	= array();
+		$error 		= '';
+		$data 		= array();
+		$user_id 	= $_SESSION['user_id'];
+		$team_id 	= $_SESSION['team_id'];
+
 		// Consulta SQL para obtener los datos de la tabla 'orders'
-		$sql = "SELECT orders.id, 
+		$sql = " SELECT orders.id, 
 				   'Order' AS type, 
 				   DATE_FORMAT(shipment_first_avalilable_pickup_date, '%m/%d/%Y') AS date_created, 
 				   orders.status, 
 				   CONCAT(customers.first_name, ' ', customers.last_name)  AS customer_name, 
 				   origin_contact_phone_1 AS phone, 
 				   customers.email1  AS customer_email, 
-				   '' AS customer_vehicles 
+				   '' AS customer_vehicles, 
+				   orders.assigned_user_id,
+				   orders.assigned_team 
 				FROM orders
 				INNER JOIN customers
-				ON customers.id = orders.id_customer ";
+				ON customers.id = orders.id_customer 
+				WHERE orders.assigned_user_id = $user_id
+				OR orders.assigned_team = $team_id
+				";
 
 		$result = $conn->query($sql);
 
@@ -3250,34 +3331,6 @@ function saveInterestedCarrierFunction() {
 		echo json_encode($jsondata);
 	}
 	
-
-/*
-	function saveUserFunction(){
-	    global $conn;
-	    $jsondata = array();
-	    $error = '';
-	    $message = '';
-
-	    $userName = $_POST['user_name'];
-	    $userLastName = $_POST['user_lastname'];
-	    $userEmail = $_POST['user_email'];
-	    $userPassword = password_hash($_POST['user_password'], PASSWORD_DEFAULT);
-	    $userRole = $_POST['user_role'];
-
-	    $query = "INSERT INTO users (name, last_name, email, code, role, status, creation_date) 
-	            VALUES ('$userName', '$userLastName', '$userEmail', '$userPassword', $userRole, 1, NOW())";
-
-	    if ($conn->query($query)) {
-	        $message = 'User saved successfully!';
-	    } else {
-	        $error = 'Error saving user: '.$conn->error;
-	    }
-
-	    $jsondata['message'] = $message;
-	    $jsondata['error'] = $error;
-	    echo json_encode($jsondata);
-	}
-*/
 	function saveUserFunction() {
 	    global $conn;
 	    $jsondata = array();
@@ -3544,8 +3597,10 @@ function saveInterestedCarrierFunction() {
 
 	    try {
 	        // Preparar la consulta para evitar inyección SQL
-	        $query = "SELECT id, name, last_name, email, code, role, status 
+	        $query = "SELECT u.id, name, last_name, email, code, role, tm.team_id AS team, status 
 	                 FROM users u 
+	                 LEFT JOIN team_members tm 
+	                 ON u.id = tm.user_id 
 	                 WHERE email = ?";
 	                 
 	        $stmt = $conn->prepare($query);
@@ -3568,6 +3623,7 @@ function saveInterestedCarrierFunction() {
 	                $_SESSION['user_lastname'] = $row['last_name'];
 	                $_SESSION['user_email'] = $row['email'];
 	                $_SESSION['user_role'] = $row['role'];
+	                $_SESSION['team_id'] = $row['team'];
 	                $_SESSION['logged_in'] = true;
 	                $_SESSION['login_time'] = time();
 
@@ -3616,7 +3672,8 @@ function saveInterestedCarrierFunction() {
 	            'name' => $_SESSION['user_name'],
 	            'lastname' => $_SESSION['user_lastname'],
 	            'email' => $_SESSION['user_email'],
-	            'role' => $_SESSION['user_role']
+	            'role' => $_SESSION['user_role'],
+	            'teamId' => $_SESSION['team_id']
 	        ];
 	    }
 	    
