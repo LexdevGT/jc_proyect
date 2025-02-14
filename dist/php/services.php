@@ -351,6 +351,14 @@
 		    case 'download_insurance_document':
 			    downloadInsuranceDocumentFunction();
 			    break;
+
+			case 'load_dashboard_orders':
+			    loadDashboardOrdersFunction();
+			    break;
+
+			case 'load_dashboard_data':
+			    loadDashboardDataFunction();
+			    break;
 		}
 	}
 
@@ -374,6 +382,153 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function loadDashboardDataFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'totals' => [], 'salesData' => [], 'orders' => []];
+	    
+	    $start_date = $_POST['start_date'];
+	    $end_date = $_POST['end_date'];
+	    $user_id = $_SESSION['user_id'];
+	    $role_id = $_SESSION['user_role'];
+
+	    try {
+	        // Query para el total de ventas
+	        $total_query = "SELECT SUM(total_tariff) as total_sales 
+	                       FROM orders 
+	                       WHERE order_date_created BETWEEN ? AND ?";
+	        
+	        // Si no es admin, filtrar por usuario
+	        if ($role_id != 1) {
+	            $total_query .= " AND assigned_user_id = ?";
+	        }
+
+	        $stmt = $conn->prepare($total_query);
+	        
+	        if ($role_id != 1) {
+	            $stmt->bind_param("ssi", $start_date, $end_date, $user_id);
+	        } else {
+	            $stmt->bind_param("ss", $start_date, $end_date);
+	        }
+	        
+	        $stmt->execute();
+	        $result = $stmt->get_result();
+	        $totals = $result->fetch_assoc();
+	        $jsondata['totals']['sales'] = $totals['total_sales'] ?? 0;
+
+	        // Solo obtener datos de ventas vs metas si es administrador
+	        if ($role_id == 1) {
+	            // Query para obtener ventas por usuario y sus metas
+	            $salesQuery = "SELECT 
+	                u.id as user_id,
+	                CONCAT(u.name, ' ', u.last_name) as user_name,
+	                COALESCE(SUM(o.total_tariff), 0) as total_sales,
+	                ug.weekly_goal
+	            FROM users u
+	            LEFT JOIN orders o ON u.id = o.assigned_user_id 
+	                AND o.order_date_created BETWEEN ? AND ?
+	            LEFT JOIN user_goals ug ON u.id = ug.user_id 
+	                AND ug.status = 1
+	                AND ? BETWEEN ug.start_date AND ug.end_date
+	            WHERE u.status = 1
+	            GROUP BY u.id, u.name, u.last_name, ug.weekly_goal
+	            ORDER BY u.name";
+
+	            $stmt = $conn->prepare($salesQuery);
+	            $stmt->bind_param("sss", $start_date, $end_date, $start_date);
+	            $stmt->execute();
+	            $result = $stmt->get_result();
+	            
+	            while ($row = $result->fetch_assoc()) {
+	                $jsondata['salesData'][] = [
+	                    'user_name' => $row['user_name'],
+	                    'total_sales' => number_format($row['total_sales'], 2, '.', ''),
+	                    'weekly_goal' => number_format($row['weekly_goal'] ?? 0, 2, '.', '')
+	                ];
+	            }
+	        }
+
+	        // Query para las órdenes (mantener la funcionalidad existente)
+	        $orders_query = "SELECT 
+	            o.id as order_id,
+	            DATE_FORMAT(o.order_date_created, '%d-%m-%Y') as date_created,
+	            o.status,
+	            CONCAT(c.first_name, ' ', c.last_name) as customer_name,
+	            o.total_tariff as total
+	        FROM orders o
+	        LEFT JOIN customers c ON o.id_customer = c.id
+	        WHERE o.order_date_created BETWEEN ? AND ?";
+
+	        if ($role_id != 1) {
+	            $orders_query .= " AND o.assigned_user_id = ?";
+	        }
+
+	        $orders_query .= " ORDER BY o.order_date_created DESC LIMIT 10";
+
+	        $stmt = $conn->prepare($orders_query);
+	        
+	        if ($role_id != 1) {
+	            $stmt->bind_param("ssi", $start_date, $end_date, $user_id);
+	        } else {
+	            $stmt->bind_param("ss", $start_date, $end_date);
+	        }
+	        
+	        $stmt->execute();
+	        $result = $stmt->get_result();
+	        
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['orders'][] = $row;
+	        }
+
+	    } catch (Exception $e) {
+	        $jsondata['error'] = $e->getMessage();
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function loadDashboardOrdersFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+	    $user_id = $_SESSION['user_id'];
+	    $role_id = $_SESSION['user_role'];
+
+	    // Query base para obtener los datos necesarios
+	    $query = "SELECT 
+	                o.id as order_id,
+	                DATE_FORMAT(o.order_date_created, '%d-%m-%Y') as date_created,
+	                o.status,
+	                CONCAT(c.first_name, ' ', c.last_name) as customer_name,
+	                o.total_tariff as total
+	              FROM orders o
+	              LEFT JOIN customers c ON o.id_customer = c.id";
+
+	    // Si no es administrador (rol_id = 1), filtrar por usuario
+	    if ($role_id != 1) {
+	        $query .= " WHERE o.assigned_user_id = $user_id";
+	    }
+
+	    // Ordenar y limitar resultados
+	    $query .= " ORDER BY o.order_date_created DESC LIMIT 10";
+
+	    try {
+	        $result = $conn->query($query);
+	        
+	        if ($result) {
+	            while ($row = $result->fetch_assoc()) {
+	                // Formatear el total con dos decimales
+	                $row['total'] = number_format($row['total'], 2, '.', ',');
+	                $jsondata['data'][] = $row;
+	            }
+	        } else {
+	            throw new Exception("Error executing query: " . $conn->error);
+	        }
+	    } catch (Exception $e) {
+	        $jsondata['error'] = $e->getMessage();
+	    }
+
+	    echo json_encode($jsondata);
 	}
 
 	function downloadInsuranceDocumentFunction() {

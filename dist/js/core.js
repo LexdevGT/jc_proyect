@@ -177,6 +177,250 @@ function new_function(){
   }
 }
 
+function updateSalesChart(data) {
+    if (!data || data.length === 0) return;
+
+    const ctx = document.getElementById('revenue-chart-canvas').getContext('2d');
+    if (window.salesChart) {
+        window.salesChart.destroy();
+    }
+
+    window.salesChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(item => item.user_name),
+            datasets: [
+                {
+                    label: 'Sales',
+                    data: data.map(item => parseFloat(item.total_sales)),
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: 'rgb(54, 162, 235)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Goals',
+                    data: data.map(item => parseFloat(item.weekly_goal)),
+                    backgroundColor: 'rgba(255, 159, 64, 0.8)',
+                    borderColor: 'rgb(255, 159, 64)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '$' + numberWithCommas(value);
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': $' + 
+                                   numberWithCommas(context.raw);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function animateValue(element, start, end, duration) {
+    // Asegurarse de que start y end sean números
+    start = parseFloat(start) || 0;
+    end = parseFloat(end) || 0;
+    
+    // Si los valores son iguales, solo actualizar el texto
+    if (start === end) {
+        $(element).text('$' + numberWithCommas(end));
+        return;
+    }
+
+    // Calcular el paso para la animación
+    const range = end - start;
+    const minTimer = 50; // Actualizar cada 50ms
+    const stepCount = duration / minTimer;
+    const stepSize = range / stepCount;
+    
+    // Inicializar variables
+    let currentValue = start;
+    let timer;
+
+    // Función para actualizar el valor
+    function updateValue() {
+        currentValue += stepSize;
+        
+        // Verificar si hemos llegado al final
+        if ((stepSize > 0 && currentValue >= end) || (stepSize < 0 && currentValue <= end)) {
+            currentValue = end;
+            clearInterval(timer);
+        }
+        
+        // Actualizar el texto con formato
+        $(element).text('$' + numberWithCommas(currentValue));
+    }
+
+    // Iniciar el timer
+    timer = setInterval(updateValue, minTimer);
+}
+
+
+function updateOrdersTable(orders) {
+    let html = '';
+    orders.forEach(order => {
+        html += `
+            <tr>
+                <td><a href="pages/order_view.html?id=${order.order_id}">${order.order_id}</a></td>
+                <td>${order.date_created}</td>
+                <td>${order.status || 'N/A'}</td>
+                <td>${order.customer_name || 'N/A'}</td>
+                <td class="text-right">$${numberWithCommas(order.total)}</td>
+            </tr>
+        `;
+    });
+
+    if ($.fn.DataTable.isDataTable('#dashboard-orders-table')) {
+        $('#dashboard-orders-table').DataTable().destroy();
+    }
+
+    $('#dashboard-orders-table tbody').html(html);
+
+    $('#dashboard-orders-table').DataTable({
+        // ... tus configuraciones actuales de DataTable ...
+    });
+}
+
+function numberWithCommas(x) {
+    return parseFloat(x).toFixed(2).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function initializeDashboard() {
+    // Inicializar el date range picker
+    $('#date-range').daterangepicker({
+        startDate: moment().startOf('month'),
+        endDate: moment().endOf('month'),
+        ranges: {
+           'Today': [moment(), moment()],
+           'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+           'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+           'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+           'This Month': [moment().startOf('month'), moment().endOf('month')],
+           'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+        }
+    }, function(start, end) {
+        // Callback cuando cambian las fechas
+        loadDashboardData(start.format('YYYY-MM-DD'), end.format('YYYY-MM-DD'));
+    });
+
+    // Cargar datos iniciales
+    const startDate = moment().startOf('month').format('YYYY-MM-DD');
+    const endDate = moment().endOf('month').format('YYYY-MM-DD');
+    loadDashboardData(startDate, endDate);
+}
+
+function loadDashboardData(startDate, endDate) {
+    $.ajax({
+        type: "POST",
+        url: "dist/php/services.php",
+        data: {
+            option: 'load_dashboard_data',
+            start_date: startDate,
+            end_date: endDate
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                // Obtener el valor actual antes de la actualización
+                const currentValue = parseFloat($('#total-sales').text().replace('$', '').replace(/,/g, '')) || 0;
+                
+                // Animar al nuevo valor
+                animateValue('#total-sales', currentValue, response.totals.sales, 1000); // 1000ms = 1 segundo
+
+                // Actualizar la gráfica si hay datos de ventas y el usuario es admin
+                if (response.salesData && response.salesData.length > 0) {
+                    updateSalesChart(response.salesData);
+                }
+
+                // Actualizar la tabla
+                updateOrdersTable(response.orders);
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
+function load_dashboard_orders() {
+    $.ajax({
+        type: "POST",
+        url: "dist/php/services.php",
+        data: {
+            option: 'load_dashboard_orders'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '';
+                response.data.forEach(order => {
+                    html += `
+                        <tr>
+                            <td><a href="pages/order_view.html?id=${order.order_id}">${order.order_id}</a></td>
+                            <td>${order.date_created}</td>
+                            <td>${order.status || 'N/A'}</td>
+                            <td>${order.customer_name || 'N/A'}</td>
+                            <td class="text-right">$${order.total}</td>
+                        </tr>
+                    `;
+                });
+
+                if ($.fn.DataTable.isDataTable('#dashboard-orders-table')) {
+                    $('#dashboard-orders-table').DataTable().destroy();
+                }
+
+                $('#dashboard-orders-table tbody').html(html);
+
+                $('#dashboard-orders-table').DataTable({
+                    "responsive": true,
+                    "autoWidth": false,
+                    "pageLength": 10,
+                    "searching": true,
+                    "ordering": true,
+                    "info": true,
+                    "scrollX": true,
+                    "order": [[1, 'desc']],
+                    "columnDefs": [
+                        { "width": "10%", "targets": 0 },
+                        { "width": "15%", "targets": 1 },
+                        { "width": "25%", "targets": 2 },
+                        { "width": "35%", "targets": 3 },
+                        { "width": "15%", "targets": 4, "className": "text-right" }
+                    ],
+                    "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+                           '<"row"<"col-sm-12"tr>>' +
+                           '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+                    "language": {
+                        "lengthMenu": "Show _MENU_ entries",
+                        "search": "Search:",
+                        "info": "Showing _START_ to _END_ of _TOTAL_ entries",
+                        "infoEmpty": "Showing 0 to 0 of 0 entries",
+                        "infoFiltered": "(filtered from _MAX_ total entries)"
+                    }
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+
 function downloadInsuranceDocument(policyId) {
     $.ajax({
         type: "POST",
