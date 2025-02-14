@@ -22,6 +22,42 @@
   <!-- overlayScrollbars -->
   <link rel="stylesheet" href="plugins/overlayScrollbars/css/OverlayScrollbars.min.css">
   <link rel="icon" href="data:,">
+  <!-- DataTables -->
+  <link rel="stylesheet" href="plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
+  <link rel="stylesheet" href="plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
+  <link rel="stylesheet" href="plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
+  <!-- daterangepicker -->
+  <link rel="stylesheet" href="plugins/daterangepicker/daterangepicker.css">
+  <!-- Tempusdominus Bootstrap 4 -->
+  <link rel="stylesheet" href="plugins/tempusdominus-bootstrap-4/css/tempusdominus-bootstrap-4.min.css">
+  <style>
+    .table {
+        margin-bottom: 0;
+        width: 100% !important;
+    }
+    .card-body {
+        padding: 0;
+    }
+    .dataTables_wrapper .row {
+        margin: 0;
+        padding: 15px;
+    }
+    .dataTables_wrapper .row:nth-child(2) {
+        padding: 0;
+    }
+    .dataTables_length select {
+        min-width: 60px;
+    }
+    .dataTables_filter input {
+        min-width: 250px;
+    }
+    .table td, .table th {
+        padding: 0.75rem;
+        vertical-align: middle;
+    }
+
+    
+  </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
 <div class="wrapper">
@@ -83,27 +119,12 @@
   <aside class="main-sidebar sidebar-dark-primary elevation-4">
     <!-- Brand Logo -->
     <a href="" class="brand-link">
-      <!--<img src="dist/img/AdminLTELogo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
-      <span class="brand-text font-weight-light">AdminLTE 3</span>-->
       <span class="brand-text font-weight-light">Advanced Transports</span>
     </a>
 
     <!-- Sidebar -->
     <div class="sidebar">
 
-      <!-- SidebarSearch Form -->
-      <!--
-      <div class="form-inline">
-        <div class="input-group" data-widget="sidebar-search">
-          <input class="form-control form-control-sidebar" type="search" placeholder="Search" aria-label="Search">
-          <div class="input-group-append">
-            <button class="btn btn-sidebar">
-              <i class="fas fa-search fa-fw"></i>
-            </button>
-          </div>
-        </div>
-      </div>
-      -->
       <!-- Sidebar Menu -->
       <nav class="mt-2">
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" id="left-nav-bar" role="menu" data-accordion="false">
@@ -134,67 +155,37 @@
     <!-- Main content -->
     <section class="content">
       <div class="container-fluid">
-        <!-- Small boxes (Stat box) -->
-        <div class="row">
-          <div class="col-lg-3 col-6">
-            <!-- small box -->
-            <div class="small-box bg-info">
-              <div class="inner">
-                <h3>150</h3>
-
-                <p>New Orders</p>
-              </div>
-              <div class="icon">
-                <i class="ion ion-bag"></i>
-              </div>
+        <!-- Date range filter -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <div class="form-group">
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text">
+                                <i class="far fa-calendar-alt"></i>
+                            </span>
+                        </div>
+                        <input type="text" class="form-control float-right" id="date-range">
+                    </div>
+                </div>
             </div>
-          </div>
-          <!-- ./col -->
-          <div class="col-lg-3 col-6">
-            <!-- small box -->
-            <div class="small-box bg-success">
-              <div class="inner">
-                <h3>$5000<!--<sup style="font-size: 20px">%</sup>--></h3>
-
-                <p>Brokers fee</p>
-              </div>
-              <div class="icon">
-                <i class="ion ion-cash"></i>
-              </div>
-              
-            </div>
-          </div>
-          <!-- ./col -->
-          <div class="col-lg-3 col-6">
-            <!-- small box -->
-            <div class="small-box bg-warning">
-              <div class="inner">
-                <h3>44</h3>
-
-                <p>User Registrations</p>
-              </div>
-              <div class="icon">
-                <i class="ion ion-person-add"></i>
-              </div>
-            </div>
-          </div>
-          <!-- ./col -->
-          <div class="col-lg-3 col-6">
-            <!-- small box -->
-            <div class="small-box bg-danger">
-              <div class="inner">
-                <h3>65</h3>
-
-                <p>Unique Visitors</p>
-              </div>
-              <div class="icon">
-                <i class="ion ion-pie-graph"></i>
-              </div>
-            </div>
-          </div>
-          <!-- ./col -->
         </div>
-        <!-- /.row -->
+        <!--./ Date range filter -->
+       <!-- Sales Total Card -->
+        <div class="row">
+            <div class="col-lg-3 col-6">
+                <div class="small-box bg-info">
+                    <div class="inner">
+                        <h3 id="total-sales">$0.00</h3>
+                        <p>Total Sales</p>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ./ Sales Total Card -->
         <!-- Main row -->
         <div class="row">
           <!-- Left col -->
@@ -232,75 +223,42 @@
             </div>
             <!-- /.card -->
 
-            <div class="card">
-              <div class="card-header">
-                <h3 class="card-title">Last Orders</h3>
-              </div>
-              <!-- /.card-header -->
-              <div class="card-body">
-                <table id="example2" class="table table-bordered table-hover">
-                  <thead>
-                  <tr>
-                    <th>Order Number</th>
-                    <th>Driver</th>
-                    <th>Destination</th>
-                    
-                  </tr>
-                  </thead>
-                  <tbody>
-                  <tr>
-                    <td>12345</td>
-                    <td>Internet
-                      Explorer 4.0
-                    </td>
-                    <td>Win 95+</td>
-                 
-                  </tr>
-                  <tr>
-                    <td>12346</td>
-                    <td>Internet
-                      Explorer 5.0
-                    </td>
-                    <td>Win 95+</td>
-                    
-                  </tr>
-                  <tr>
-                    <td>12347</td>
-                    <td>Internet
-                      Explorer 5.5
-                    </td>
-                    <td>Win 95+</td>
-                   
-                  </tr>
-                  <tr>
-                    <td>12348</td>
-                    <td>Internet
-                      Explorer 6
-                    </td>
-                    <td>Win 98+</td>
-               
-                  </tr>
-                  <tr>
-                    <td>12349</td>
-                    <td>Internet Explorer 7</td>
-                    <td>Win XP SP2+</td>
-                 
-                  </tr>
-                  <tr>
-                    <td>12345</td>
-                    <td>AOL browser (AOL desktop)</td>
-                    <td>Win XP</td>
-                  
-                  </tr>
-                  </tfoot>
-                </table>
-              </div>
-              <!-- /.card-body -->
-            </div>
             <!-- /.card -->
           </section>
           <!-- /.Left col -->
-          
+        </div>
+        <div class="row">
+          <!-- Last orders -->
+          <section class="content col-lg">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Recent Orders</h3>
+                            </div>
+                            <div class="card-body table-responsive p-0">
+                                <table id="dashboard-orders-table" class="table table-bordered table-striped w-100">
+                                    <thead>
+                                        <tr>
+                                            <th class="text-nowrap">Order ID</th>
+                                            <th class="text-nowrap">Date Created</th>
+                                            <th class="text-nowrap">Status</th>
+                                            <th class="text-nowrap">Customer Name</th>
+                                            <th class="text-nowrap">Total $</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Los datos se cargarán dinámicamente -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- ./ Last orders -->
         </div>
         <!-- /.row (main row) -->
       </div><!-- /.container-fluid -->
@@ -373,5 +331,27 @@
     $('.nav-link').find('i.fa-tachometer-alt').parent().addClass( "active" );
   }, 1100);
 </script>
+<script type="text/javascript">
+  $(document).ready(function() {
+    load_dashboard_orders();
+    initializeDashboard();
+  });
+</script>
+<!-- DataTables  & Plugins -->
+<script src="plugins/datatables/jquery.dataTables.min.js"></script>
+<script src="plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
+<script src="plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
+<script src="plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
+<script src="plugins/datatables-buttons/js/dataTables.buttons.min.js"></script>
+<script src="plugins/datatables-buttons/js/buttons.bootstrap4.min.js"></script>
+<script src="plugins/jszip/jszip.min.js"></script>
+<script src="plugins/pdfmake/pdfmake.min.js"></script>
+<script src="plugins/pdfmake/vfs_fonts.js"></script>
+<script src="plugins/datatables-buttons/js/buttons.html5.min.js"></script>
+<script src="plugins/datatables-buttons/js/buttons.print.min.js"></script>
+<script src="plugins/datatables-buttons/js/buttons.colVis.min.js"></script>
+<!-- daterangepicker -->
+<script src="plugins/moment/moment.min.js"></script>
+<script src="plugins/daterangepicker/daterangepicker.js"></script>
 </body>
 </html>
