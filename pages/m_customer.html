@@ -30,7 +30,8 @@
   <link rel="stylesheet" href="../plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
   <!-- summernote -->
   <link rel="stylesheet" href="../plugins/summernote/summernote-bs4.min.css">
- 
+  <!-- Custome Style -->
+  <link rel="stylesheet" href="../dist/css/style.css">
   <style>
     .select2-container--default .select2-selection--single {
       height: 38px;
@@ -156,6 +157,7 @@
                     </div>
                   </div>
                 </div>
+                <!--
                 <div class="row">
                   <div class="col-md-6">
                     <div class="form-group">
@@ -165,6 +167,7 @@
                     </div>
                   </div>
                 </div>
+              -->
                 <div class="row">
                   <div class="col-md-5">
                     <div class="form-group">
@@ -395,11 +398,85 @@
 <script src="../dist/js/core.js"></script>
 <script type="text/javascript">
   $(document).ready(function() {
+
     // Inicializar Select2
     $('.select2').select2({
       theme: 'bootstrap4'
     });
 
+   // Función para formatear las opciones del select
+    function formatTeamOption(data) {
+        // Si no hay datos o es el placeholder, retornar el texto simple
+        if (!data.id || !data.element) {
+            return data.text;
+        }
+
+        // Obtener los miembros del equipo desde los datos del elemento
+        const members = $(data.element).data('members');
+        
+        if (!members || !members.length) {
+            return data.text;
+        }
+
+        // Crear el elemento HTML con el nombre del equipo y sus miembros
+        return $(`
+            <div class="d-flex flex-column">
+                <div class="font-weight-bold">${data.text}</div>
+                <div class="small text-muted">
+                    <i class="fas fa-users mr-1"></i>
+                    ${members.join(', ')}
+                </div>
+            </div>
+        `);
+    }
+
+    // Inicializar Select2
+    $('#customer-team-select').select2({
+        theme: 'bootstrap4',
+        width: '100%',
+        templateResult: formatTeamOption,
+        templateSelection: function(data) {
+            return data.text;
+        }
+    });
+
+    // Función para cargar los equipos
+    function loadTeams() {
+        $.ajax({
+            type: "POST",
+            url: "../dist/php/services.php",
+            data: { 
+                option: 'load_teams_select'
+            },
+            dataType: "json",
+            success: function(response) {
+                if (response.error === '') {
+                    const $select = $('#customer-team-select');
+                    
+                    // Limpiar el select
+                    $select.empty();
+                    
+                    // Agregar opción por defecto
+                    $select.append(new Option('Select a team', '', true, true));
+                    
+                    // Agregar las opciones de equipos
+                    response.data.forEach(function(team) {
+                        const option = new Option(team.name, team.id, false, false);
+                        // Guardar los miembros como data en el elemento option
+                        $(option).data('members', team.members);
+                        $select.append(option);
+                    });
+                    
+                    // Refrescar Select2
+                    $select.trigger('change');
+                }
+            }
+        });
+    }
+
+    // Cargar los equipos
+    loadTeams();
+    
     // Inicializar Summernote para el campo de información adicional
     $('#customer-additional-info-txt').summernote({
       height: 150,
@@ -410,11 +487,47 @@
       ]
     });
 
+// FUNCION PARA INGRESO DE ZIP Y AUTOMATICAMENTE CARGAR CAMPOS
+  $('#customer-zip-txt').on('change', function() {
+    const zipcode = $(this).val();
+    if (zipcode) {
+        // Mostrar indicador de carga
+        $('#customer-city-txt, #customer-state-txt, #customer-country-txt').val('Loading...');
+        
+        $.ajax({
+            type: "POST",
+            url: "../dist/php/services.php",
+            data: {
+                option: 'get_zip_info',
+                zipcode: zipcode
+            },
+            dataType: "json",
+            success: function(response) {
+                if (response.error === '') {
+                    $('#customer-city-txt').val(response.data.city || '');
+                    $('#customer-state-txt').val(response.data.state || '');
+                    $('#customer-country-txt').val(response.data.country || '');
+                } else {
+                    // Limpiar campos si hay error
+                    $('#customer-city-txt, #customer-state-txt, #customer-country-txt').val('');
+                }
+            },
+            error: function() {
+                // Limpiar campos si hay error
+                $('#customer-city-txt, #customer-state-txt, #customer-country-txt').val('');
+            }
+        });
+    }
+  });
+
+
     // Cargar datos iniciales
     load_companies_select();
     load_referral_sources_select();
     load_users_select();
-    load_teams_select();
+    //load_teams_select();
+
+
   });
 
   setTimeout(

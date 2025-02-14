@@ -177,6 +177,72 @@ function new_function(){
   }
 }
 
+function downloadInsuranceDocument(policyId) {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+            option: 'download_insurance_document',
+            policy_id: policyId
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                const documentPath = '../dist/'+response.data.document_path;
+                const documentName = response.data.document_name;
+                
+                // Crear un enlace temporal y desencadenar la descarga
+                const link = document.createElement('a');
+                link.href = documentPath;
+                link.setAttribute('download', documentName);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                alert('Error downloading document: ' + response.error);
+            }
+        }
+    });
+}
+
+// Función para formatear números con comas y permitir decimales
+function formatNumberWithCommas(value) {
+    // Remover cualquier caracter que no sea número o punto
+    let number = value.replace(/[^0-9.]/g, '');
+    
+    // Separar parte entera y decimal
+    let parts = number.split('.');
+    let integerPart = parts[0];
+    let decimalPart = parts[1];
+
+    // Agregar comas a la parte entera
+    integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+    // Reconstruir el número con hasta 2 decimales
+    return decimalPart ? 
+        `${integerPart}.${decimalPart.slice(0, 2)}` : 
+        integerPart;
+}
+
+// Función para aplicar formato al ingresar datos en los campos
+function formatInputAmount(input) {
+    // Guardar la posición del cursor
+    let cursorPosition = input.selectionStart;
+
+    // Aplicar formato al valor ingresado
+    let formattedValue = formatNumberWithCommas(input.value);
+
+    // Actualizar el valor del campo
+    input.value = formattedValue;
+
+    // Restaurar la posición del cursor
+    input.setSelectionRange(cursorPosition, cursorPosition);
+}
+
+// Función para obtener el valor numérico sin formato
+function unformatNumber(value) {
+    return parseFloat(value.replace(/,/g, '')) || 0;
+}
 
 // Función para inicializar el menú de usuario
 function initializeUserMenu() {
@@ -312,7 +378,7 @@ function changePassword() {
 function logout() {
     const basePath = getBasePath();
     completePath = `${basePath}dist/php/services.php`;
-    console.log(completePath);
+    
     $.ajax({
         type: "POST",
         url: completePath,
@@ -517,6 +583,63 @@ function load_vehicle_action_buttons_functions(){
            });
        }
     });
+
+    $('.edit-vehicle').click(function(e){
+        e.preventDefault();
+        const vehicleId = $(this).data('id');
+        const orderId = $('#order_view_idOrder').text();
+        
+        // Primero deshabilitamos el select
+        $('#order-modal-select-vehicle').prop('disabled', true);
+        
+        $.ajax({
+            type: "POST",
+            url: "../dist/php/services.php",
+            data: {
+                option: 'get_order_vehicle_details',
+                order_id: orderId,
+                vehicle_id: vehicleId
+            },
+            dataType: "json",
+            success: function(response) {
+                if (response.error === '') {
+                    // Creamos una única opción en el select con el vehículo actual
+                    const vehicleOption = `<option value="${response.data.vehicle_id}" selected>
+                        ${response.data.model_year} - ${response.data.make} - ${response.data.model} - ${response.data.vehicle_type}
+                    </option>`;
+                    $('#order-modal-select-vehicle').html(vehicleOption);
+                    
+                    $('#order-modal-input-modelyear').val(response.data.model_year);
+                    $('#order-modal-input-make').val(response.data.make);
+                    $('#order-modal-input-model').val(response.data.model);
+                    $('#order-modal-input-type').val(response.data.vehicle_type);
+                    $('#order-modal-input-weight').val(response.data.weight);
+                    $('#order-modal-input-weight-measure').val(response.data.weight_measure);
+                    $('#order-modal-input-length').val(response.data.vehicle_length);
+                    $('#order-modal-input-width').val(response.data.vehicle_width);
+                    $('#order-modal-input-height').val(response.data.vehicle_height);
+                    $('#order-modal-input-vin').val(response.data.vin);
+                    $('#order-modal-input-plateno').val(response.data.plate_no);
+                    $('#order-modal-input-lotno').val(response.data.lot_no);
+                    $('#order-modal-input-color').val(response.data.color);
+                    $('#order-modal-input-inop').prop('checked', response.data.inop == 1);
+                    $('#order-modal-input-carrier-pay').val('$' + parseFloat(response.data.carrier_pay).toFixed(2));
+                    $('#order-modal-input-broker-fee').val('$' + parseFloat(response.data.broker_fee).toFixed(2));
+                    $('#order-modal-input-wrecker-fee').val('$' + parseFloat(response.data.wrecker_fee).toFixed(2));
+                    $('#order-modal-input-other-fee').val('$' + parseFloat(response.data.other_fee).toFixed(2));
+                    $('#order-modal-input-tariff').val('$' + parseFloat(response.data.vehicle_tariff).toFixed(2));
+                    
+                    // Store the vehicle ID for the update
+                    $('#order-modal-save-vehicle-btn').data('vehicle-id', vehicleId);
+                    
+                    // Show modal
+                    $('#vehicles-modal').modal('show');
+                } else {
+                    alert(response.error);
+                }
+            }
+        });
+    });
 }
 
 // Función para calcular los totales de la orden
@@ -624,6 +747,9 @@ function loadOrderVehicles() {
                            </td>
                            <td>$${parseFloat(vehicle.vehicle_tariff).toFixed(2)}</td>
                            <td>
+                               <button class="btn btn-sm btn-info edit-vehicle" data-id="${vehicle.id}">
+                                   <i class="fas fa-edit"></i>
+                               </button>
                                <button class="btn btn-sm btn-danger delete-vehicle" data-id="${vehicle.id}">
                                    <i class="fas fa-trash"></i>
                                </button>
@@ -633,8 +759,7 @@ function loadOrderVehicles() {
                $('#vehicles-table tbody').html(html);
                load_vehicle_action_buttons_functions();
 
-               // Calcular los totales después de cargar los vehículos
-                calculateOrderTotals(orderId);
+               calculateOrderTotals(orderId);
            } else {
                alert(response.error);
            }
@@ -643,8 +768,9 @@ function loadOrderVehicles() {
 }
 
 function save_order_vehicle(){
-    
     const orderId = $('#order_view_idOrder').text();
+    const vehicleId = $('#order-modal-save-vehicle-btn').data('vehicle-id');
+    
     const vehicleData = {
         vehicle_id: $('#order-modal-select-vehicle').val(),
         carrier_pay: $('#order-modal-input-carrier-pay').val().replace('$', '').trim(),
@@ -664,11 +790,15 @@ function save_order_vehicle(){
         inop: $('#order-modal-input-inop').is(':checked') ? 1 : 0
     };
 
+    if (vehicleId) {
+        vehicleData.id = vehicleId;
+    }
+
     $.ajax({
         type: "POST",
         url: "../dist/php/services.php",
         data: {
-            option: 'save_order_vehicle',
+            option:'save_order_vehicle',
             order_id: orderId,
             vehicle_data: JSON.stringify(vehicleData)
         },
@@ -677,9 +807,7 @@ function save_order_vehicle(){
             if (response.error === '') {
                 $('#vehicles-modal').modal('hide');
                 loadOrderVehicles();
-                alert('Vehicle saved!');
-
-                //load_order_view(); // Recargar toda la orden
+                alert(vehicleId ? 'Vehicle updated successfully!' : 'Vehicle saved successfully!');
             } else {
                 alert(response.error);
             }
@@ -962,15 +1090,40 @@ function internal_notes_new_button(){
     $('#internal-notes-modal').modal('show');
 }
 
+
 function order_vehicles_new_button(){
-    // Clear form
+    // Habilitar el select
+    $('#order-modal-select-vehicle').prop('disabled', false);
+    
+    // Cargar todos los vehículos en el select
+    loadVehiclesForOrder();
+    
+    // Limpiar el ID de vehículo almacenado para la actualización
+    $('#order-modal-save-vehicle-btn').removeData('vehicle-id');
+    
+    // Limpiar todos los campos
     $('#order-modal-input-modelyear').val('');
     $('#order-modal-input-make').val('');
     $('#order-modal-input-model').val('');
     $('#order-modal-input-type').val('');
-    // Show modal
+    $('#order-modal-input-weight').val('');
+    $('#order-modal-input-weight-measure').val('lbs');
+    $('#order-modal-input-length').val('');
+    $('#order-modal-input-width').val('');
+    $('#order-modal-input-height').val('');
+    $('#order-modal-input-vin').val('');
+    $('#order-modal-input-plateno').val('');
+    $('#order-modal-input-lotno').val('');
+    $('#order-modal-input-color').val('');
+    $('#order-modal-input-inop').prop('checked', false);
+    $('#order-modal-input-carrier-pay').val('');
+    $('#order-modal-input-broker-fee').val('');
+    $('#order-modal-input-wrecker-fee').val('');
+    $('#order-modal-input-other-fee').val('');
+    $('#order-modal-input-tariff').val('');
+    
+    // Mostrar el modal
     $('#vehicles-modal').modal('show');
-    loadVehiclesForOrder();
 }
 
 function load_payments() {
@@ -1064,63 +1217,6 @@ function loadOrdersSelect() {
         }
     });
 }
-/*
-function loadPaymentsByOrder(orderId) {
-    $.ajax({
-        type: "POST",
-        url: "../dist/php/services.php",
-        data: { 
-            option: 'load_payments_by_order',
-            order_id: orderId 
-        },
-        dataType: "json",
-        success: function(response) {
-            if (response.error === '') {
-                const table = $('#payments-table').DataTable();
-                table.clear();
-                
-                response.data.forEach(payment => {
-                    table.row.add([
-                        payment.id,
-                        `<a href="order_view.html?id=${payment.order_id}">${payment.order_id}</a>`,
-                        payment.payment_date,
-                        payment.payment_type,
-                        payment.payment_direction,
-                        `$${parseFloat(payment.payment_amount).toFixed(2)}`,
-                        payment.identification,
-                        `<div class="btn-group">
-                            <div class="custom-control custom-switch custom-switch-on-success">
-                                <input type="checkbox" class="custom-control-input payment-status" 
-                                    id="customSwitch${payment.id}" data-id="${payment.id}" 
-                                    ${payment.status == 1 ? 'checked' : ''}>
-                                <label class="custom-control-label" for="customSwitch${payment.id}"></label>
-                            </div>
-                            <button class="btn btn-sm btn-danger delete-payment ml-2" data-id="${payment.id}">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>`
-                    ]);
-                });
-                
-                table.draw();
-                
-                // Reattach event listeners
-                $('.payment-status').on('change', function() {
-                    const id = $(this).data('id');
-                    const newStatus = $(this).is(':checked') ? 1 : 0;
-                    updatePaymentStatus(id, newStatus);
-                });
-
-                $('.delete-payment').on('click', function() {
-                    const id = $(this).data('id');
-                    deletePayment(id);
-                });
-            } else {
-                alert(response.error);
-            }
-        }
-    });
-}*/
 
 function loadPaymentsByOrder(orderId) {
     $.ajax({
@@ -1314,7 +1410,7 @@ function clearPaymentForm() {
 
 // Function to load insurance policies
 function load_insurance_policies() {
-    $.ajax({
+     $.ajax({
         type: "POST",
         url: "../dist/php/services.php",
         data: { 
@@ -1343,6 +1439,11 @@ function load_insurance_policies() {
                                         <label class="custom-control-label" for="customSwitch${policy.id}"></label>
                                     </div>
                                 </div>
+                            </td>
+                            <td>
+                                <a href="#" class="btn btn-sm btn-info download-document" data-id="${policy.id}">
+                                    <i class="fas fa-download"></i>
+                                </a>
                             </td>
                         </tr>`;
                 });
@@ -1389,8 +1490,12 @@ function insurance_policy_save_button() {
         policy_number: $('#policy-number').val(),
         insurance_company: $('#insurance-company').val(),
         expiration_date: $('#expiration-date').val(),
+        /*
         liability_amount: $('#liability-amount').val().replace('$', ''),
         cargo_amount: $('#cargo-amount').val().replace('$', ''),
+        */
+        liability_amount: $('#liability-amount').val().replace(/[$,]/g, ''),
+        cargo_amount: $('#cargo-amount').val().replace(/[$,]/g, ''),
         document_name: $('#document-name').val()
     };
 
@@ -1438,11 +1543,15 @@ function getPolicyInfo(policyId) {
         success: function(response) {
             if (response.error === '') {
                 const policy = response.data;
+                $('#liability-amount').val(formatNumberWithCommas(policy.liability_amount.toString()));
+                $('#cargo-amount').val(formatNumberWithCommas(policy.cargo_amount.toString()));
                 $('#policy-number').val(policy.policy_number);
                 $('#insurance-company').val(policy.insurance_company);
                 $('#expiration-date').val(policy.expiration_date);
+                /*
                 $('#liability-amount').val('$' + parseFloat(policy.liability_amount).toFixed(2));
                 $('#cargo-amount').val('$' + parseFloat(policy.cargo_amount).toFixed(2));
+                */
                 $('#document-name').val(policy.document_name);
                 
                 // Store policy ID for update
@@ -2514,6 +2623,29 @@ function updateCustomerStatus(customerId, newStatus) {
 
 // Función para cargar la lista de equipos en el select
 function load_teams_select() {
+    $.ajax({
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: { 
+            option: 'load_teams_select'
+        },
+        dataType: "json",
+        success: function(response) {
+            if (response.error === '') {
+                let html = '<option value="" disabled selected>Select a team</option>';
+                response.data.forEach(team => {
+                    let option = new Option(team.name, team.id);
+                    option.members = team.members;
+                    $('#customer-team-select').append(option);
+                });
+            } else {
+                alert(response.error);
+            }
+        }
+    });
+}
+/*
+function load_teams_select() {
   $.ajax({
     type: "POST",
     url: "../dist/php/services.php",
@@ -2533,7 +2665,7 @@ function load_teams_select() {
       }
     }
   });
-}
+}*/
 
 // Función para cargar la lista de usuarios en el select
 function load_users_select() {
@@ -2721,7 +2853,9 @@ function customer_save_button() {
   const customerData = {
     first_name: $('#customer-firstname-txt').val().trim(),
     last_name: $('#customer-lastname-txt').val().trim(),
-    company_id: $('#customer-company-select').val(),
+    // LINEA COMENTADA YA QUE SE OCULTO ESTE CAMPO A PETICION DE ADVANCED TRANSPORT Jueves 13 de Febrero 2025
+    //company_id: $('#customer-company-select').val(),
+    company_id: '',
     phone1: phone,
     is_mobile1: $('#customer-ismobile1-switch').is(':checked') ? 1 : 0,
     email1: email,
@@ -4851,7 +4985,7 @@ function sign_in() {
 function getBasePath() {
     const currentPath = window.location.pathname;
     const c = currentPath.includes('/pages/') ? '../' : '';
-    console.log(c);
+    //console.log(c);
     return currentPath.includes('/pages/') ? '../' : '';
 }
 
@@ -4945,7 +5079,6 @@ function load_sidebar(n = 0) {
 
             setTimeout(function() {
                 // Inicializar el menú de usuario después de cargar el sidebar
-                console.log('llamando!');
                 initializeUserMenu();
             }, 150);
         },

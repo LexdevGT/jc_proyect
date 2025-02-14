@@ -343,6 +343,14 @@
 			case 'get_user_session_info':
 			    getUserSessionInfoFunction();
 			    break;
+
+			case 'get_order_vehicle_details':
+			    get_order_vehicle_details();
+			    break;
+
+		    case 'download_insurance_document':
+			    downloadInsuranceDocumentFunction();
+			    break;
 		}
 	}
 
@@ -366,6 +374,78 @@
 		$jsondata['message'] = $message;
 		$jsondata['error']   = $error;
 		echo json_encode($jsondata);
+	}
+
+	function downloadInsuranceDocumentFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => null];
+
+	    $policyId = $_POST['policy_id'];
+	    
+	    $query = "SELECT document_name, document_path FROM insurance_policies WHERE id = ?";
+	    $stmt = $conn->prepare($query);
+	    $stmt->bind_param("i", $policyId);
+
+	    if ($stmt->execute()) {
+	        $result = $stmt->get_result();
+	        $row = $result->fetch_assoc();
+	        
+	        if ($row) {
+	            $jsondata['data'] = [
+	                'document_name' => $row['document_name'],
+	                'document_path' => $row['document_path']
+	            ];
+	        } else {
+	            $jsondata['error'] = 'Document not found';
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error fetching document data: ' . $conn->error;
+	    }
+
+	    echo json_encode($jsondata);
+	}
+
+	function get_order_vehicle_details(){
+		global $conn;
+	    $orderId = $_POST['order_id'];
+	    $vehicleId = $_POST['vehicle_id'];
+	    
+	    if (!$orderId || !$vehicleId) {
+	        echo json_encode(array(
+	            'error' => 'Missing required parameters'
+	        ));
+	        return;
+	    }
+
+	    //error_log("Orden: $orderId, Vehiculo: $vehicleId");
+	    
+	    $query = "SELECT ov.*, v.model_year, v.make, v.model, v.vehicle_type 
+	              FROM orders_vehicles ov 
+	              JOIN vehicles v ON ov.vehicle_id = v.id 
+	              WHERE ov.order_id = ? AND ov.id = ?";
+	              
+	    try {
+	        $stmt = $conn->prepare($query);
+	        $stmt->bind_param("ii", $orderId, $vehicleId);
+	        $stmt->execute();
+	        $result = $stmt->get_result();
+	        $vehicleDetails = $result->fetch_assoc();
+	        
+	        if ($vehicleDetails) {
+	            echo json_encode(array(
+	                'error' => '',
+	                'data' => $vehicleDetails
+	            ));
+	        } else {
+	            echo json_encode(array(
+	                'error' => 'Vehicle not found'
+	            ));
+	        }
+	    } catch (Exception $e) {
+	        echo json_encode(array(
+	            'error' => 'Error getting vehicle details: ' . $e->getMessage()
+	        ));
+	    }
 	}
 
 	// Función para obtener la información de la sesión
@@ -395,7 +475,7 @@
 	        echo json_encode($jsondata);
 	        return;
 	    }
-error_log('entrando');
+
 	    $userId = $_SESSION['user_id'];
 	    $currentPassword = $_POST['current_password'];
 	    $newPassword = $_POST['new_password'];
@@ -428,8 +508,7 @@ error_log('entrando');
 	    } catch (Exception $e) {
 	        $jsondata['error'] = $e->getMessage();
 	    }
-	    error_log('entrando');
-error_log(print_r($jsondata,true));
+
 	    echo json_encode($jsondata);
 	}
 
@@ -915,33 +994,6 @@ error_log(print_r($jsondata,true));
 	        if (!$stmt->execute()) {
 	            throw new Exception("Error saving vehicle: " . $stmt->error);
 	        }
-
-	        // Update order fees
-	        // ESTO QUEDA COMENTADO YA QUE DESDE ACA NO HAY QUE HACER CAMBIOS A LOS FEES DE LA ORDEN
-	        /*
-	        $updateOrder = "UPDATE orders SET
-	                       total_tariff = ?,
-	                       carrier_pay = ?,
-	                       broker_fee = ?,
-	                       wrecker_fee = ?,
-	                       other_fee = ?
-	                       WHERE id = ?";
-	                       
-	        $stmt = $conn->prepare($updateOrder);
-	        $stmt->bind_param(
-	            "dddddi",
-	            $vehicleData['vehicle_tariff'],
-	            $vehicleData['carrier_pay'],
-	            $vehicleData['broker_fee'],
-	            $vehicleData['wrecker_fee'],
-	            $vehicleData['other_fee'],
-	            $orderId
-	        );
-
-	        if (!$stmt->execute()) {
-	            throw new Exception("Error updating order fees: " . $stmt->error);
-	        }
-	        */
 	        
 	        $conn->commit();
 	        $jsondata['message'] = 'Vehicle and order fees updated successfully!';
@@ -960,11 +1012,6 @@ error_log(print_r($jsondata,true));
 	    
 	    $vehicleId = $_POST['vehicle_id'];
 	    $orderId = $_POST['order_id'];
-	    //error_log($vehicleId. ' ' .$orderId);
-	    /*
-	    $query = "SELECT model_year, make, model, vehicle_type 
-	              FROM vehicles 
-	              WHERE id = ?";*/
 
 	    $query = "SELECT v.model_year, v.make, v.model, v.vehicle_type, ov.vin, ov.plate_no, ov.lot_no ,ov.color ,ov.inop
 	    			,v.weight,v.weight_measure,v.vehicle_length,v.vehicle_width,v.vehicle_height  
@@ -1454,6 +1501,10 @@ error_log(print_r($jsondata,true));
 
 	        $policyData = json_decode($_POST['policy_data'], true);
 	        $policyId = isset($_POST['policy_id']) ? $_POST['policy_id'] : null;
+
+	         // Remover comas y convertir a float
+	        $policyData['liability_amount'] = (float)str_replace(',', '', $policyData['liability_amount']);
+	        $policyData['cargo_amount'] = (float)str_replace(',', '', $policyData['cargo_amount']);
 
 	        // Handle file upload if present
 	        $documentPath = null;
@@ -2309,6 +2360,7 @@ function saveInterestedCarrierFunction() {
 	   echo json_encode($jsondata);
 	}
 
+/*
 	function loadTeamsSelectFunction() {
 	  global $conn;
 	  $jsondata = ['error' => '', 'data' => []];
@@ -2329,6 +2381,44 @@ function saveInterestedCarrierFunction() {
 	  }
 
 	  echo json_encode($jsondata);
+	}
+*/
+
+	function loadTeamsSelectFunction() {
+	    global $conn;
+	    $jsondata = ['error' => '', 'data' => []];
+
+	    $query = "SELECT 
+	                t.id, 
+	                t.name,
+	                GROUP_CONCAT(
+	                    CONCAT(u.name, ' ', u.last_name) 
+	                    ORDER BY u.name 
+	                    SEPARATOR ', '
+	                ) as team_members
+	              FROM teams t
+	              LEFT JOIN team_members tm ON t.id = tm.team_id
+	              LEFT JOIN users u ON tm.user_id = u.id
+	              WHERE t.status = 1
+	              GROUP BY t.id, t.name
+	              ORDER BY t.name";
+
+	    $result = $conn->query($query);
+
+	    if ($result) {
+	        while ($row = $result->fetch_assoc()) {
+	            $jsondata['data'][] = [
+	                'id' => $row['id'],
+	                'name' => $row['name'],
+	                'members' => $row['team_members'] ? explode(', ', $row['team_members']) : []
+	            ];
+	        }
+	    } else {
+	        $jsondata['error'] = 'Error loading teams: ' . $conn->error;
+	    }
+	    
+	    //error_log(print_r($jsondata, true)); // Para debug
+	    echo json_encode($jsondata);
 	}
 
 	function loadUsersSelectFunction() {
@@ -3007,10 +3097,13 @@ function saveInterestedCarrierFunction() {
 		$error 		= '';
 		$data 		= array();
 		$user_id 	= $_SESSION['user_id'];
-		$team_id 	= $_SESSION['team_id'];
+		$team_id    = $_SESSION['team_id'] == 0 ? 0 : $_SESSION['team_id'];
+		$role_id    = $_SESSION['user_role'];
+		
 
-		// Consulta SQL para obtener los datos de la tabla 'orders'
-		$sql = " SELECT orders.id, 
+		if($role_id != 1){
+			// Consulta SQL para obtener los datos de la tabla 'orders'
+			$sql = " SELECT orders.id, 
 				   'Order' AS type, 
 				   DATE_FORMAT(shipment_first_avalilable_pickup_date, '%m/%d/%Y') AS date_created, 
 				   orders.status, 
@@ -3026,6 +3119,24 @@ function saveInterestedCarrierFunction() {
 				WHERE orders.assigned_user_id = $user_id
 				OR orders.assigned_team = $team_id
 				";
+		}else{
+			// Consulta SQL para obtener los datos de la tabla 'orders'
+			$sql = " SELECT orders.id, 
+				   'Order' AS type, 
+				   DATE_FORMAT(shipment_first_avalilable_pickup_date, '%m/%d/%Y') AS date_created, 
+				   orders.status, 
+				   CONCAT(customers.first_name, ' ', customers.last_name)  AS customer_name, 
+				   origin_contact_phone_1 AS phone, 
+				   customers.email1  AS customer_email, 
+				   '' AS customer_vehicles, 
+				   orders.assigned_user_id,
+				   orders.assigned_team 
+				FROM orders
+				INNER JOIN customers
+				ON customers.id = orders.id_customer 
+				";
+		}
+		
 
 		$result = $conn->query($sql);
 
