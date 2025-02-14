@@ -1,0 +1,36 @@
+.team-option {
+    padding: 5px;
+}
+.team-name {
+    font-weight: bold;
+}
+.team-members {
+    margin-top: 2px;
+    font-size: 0.85em;
+}
+.select2-container--bootstrap4 .select2-results__option {
+    padding: 6px 12px;
+    border-bottom: 1px solid #eee;
+}
+.select2-container--bootstrap4 .select2-results__option:last-child {
+    border-bottom: none;
+}
+.select2-container--bootstrap4 .select2-results__option--highlighted[aria-selected] .team-members {
+    color: #fff !important;
+}
+
+.select2-container--bootstrap4 .select2-results__option {
+        padding: 8px 12px;
+    }
+    
+    .select2-container--bootstrap4 .select2-results__option--highlighted[aria-selected] .text-muted {
+        color: rgba(255, 255, 255, 0.8) !important;
+    }
+    
+    .select2-results__option {
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .select2-results__option:last-child {
+        border-bottom: none;
+    }
