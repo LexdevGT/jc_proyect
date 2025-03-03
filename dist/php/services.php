@@ -1,6 +1,8 @@
 <?php
-//error_log('Reconoce PHP');
 	session_start();
+	ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 	date_default_timezone_set('America/Guatemala');
 	header('Content-Type: application/json');
 
@@ -3484,6 +3486,7 @@ function saveInterestedCarrierFunction() {
 
 	function loadPhonesFunction(){
 		global $conn;
+		$conn->set_charset("utf8");
 		$jsondata = array();
 		$error = '';
 		$data = array();
@@ -3516,34 +3519,13 @@ function saveInterestedCarrierFunction() {
 			$error = 'Error fetching zipcode data: '.$conn->error;
 		}
 		
-//error_log(print_r($data,true));
+
 		$jsondata['data']		= $data;
 		$jsondata['error']   	= $error;
+		error_log(print_r($jsondata['data'],true));
 		echo json_encode($jsondata);
 	}
-/*
-	function getUserInfoFunction(){
-		global $conn;
-		$jsondata = array();
-		$error = '';
-		$data = array();
 
-		$userId = $_POST['user_id'];
-
-		$query = "SELECT name, last_name, email, role FROM users WHERE id = $userId";
-		$result = $conn->query($query);
-
-		if ($result) {
-			$data = $result->fetch_assoc();
-		} else {
-			$error = 'Error fetching user data: '.$conn->error;
-		}
-
-		$jsondata['data'] = $data;
-		$jsondata['error'] = $error;
-		echo json_encode($jsondata);
-	}
-*/
 	function getUserInfoFunction() {
 	    global $conn;
 	    $jsondata = array();
@@ -3862,6 +3844,7 @@ function saveInterestedCarrierFunction() {
 	    $code = '';
 
 	    try {
+	    	//error_log('lo intento');
 	        // Preparar la consulta para evitar inyección SQL
 	        $query = "SELECT u.id, name, last_name, email, code, role, tm.team_id AS team, status 
 	                 FROM users u 
@@ -3875,6 +3858,7 @@ function saveInterestedCarrierFunction() {
 	        $result = $stmt->get_result();
 
 	        if ($result && $row = $result->fetch_assoc()) {
+	        	error_log('entro al primer if');
 	            if ($row['status'] != 1) {
 	                throw new Exception('User account is inactive.');
 	            }
@@ -3882,7 +3866,7 @@ function saveInterestedCarrierFunction() {
 	            if (password_verify($pass, $row['code'])) {
 	                // Iniciar sesión
 	                //session_start();
-	                
+	                //error_log('verificamos el password');
 	                // Guardar datos importantes en la sesión
 	                $_SESSION['user_id'] = $row['id'];
 	                $_SESSION['user_name'] = $row['name'];
@@ -3892,7 +3876,7 @@ function saveInterestedCarrierFunction() {
 	                $_SESSION['team_id'] = $row['team'];
 	                $_SESSION['logged_in'] = true;
 	                $_SESSION['login_time'] = time();
-
+	                error_log($row['name']);
 	                // Actualizar último acceso en la base de datos (opcional)
 	                $updateQuery = "UPDATE users SET last_login = NOW() WHERE id = ?";
 	                $stmt = $conn->prepare($updateQuery);
@@ -3925,8 +3909,10 @@ function saveInterestedCarrierFunction() {
 	        }
 
 	    } catch (Exception $e) {
+	    	//error_log('no lo logro');
 	        $error = $e->getMessage();
 	    }
+
 
 	    $jsondata['message'] = $message;
 	    $jsondata['error'] = $error;
@@ -3942,7 +3928,7 @@ function saveInterestedCarrierFunction() {
 	            'teamId' => $_SESSION['team_id']
 	        ];
 	    }
-	    
+	   // error_log(print_r($jsondata,true));
 	    echo json_encode($jsondata);
 	}
 

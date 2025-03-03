@@ -4653,108 +4653,41 @@ function load_select_transport_type(selectedId = 0, selectElementId = '#new_orde
         }
     });
 }
-/*
-function load_select_transport_type(id = 0) {
-  var transportTypeHtml = '';
-  var fullName = '';
-  $.ajax({
-    contentType: "application/x-www-form-urlencoded",
-    type: "POST",
-    url: "../dist/php/services.php",
-    data: {
-      option: 'load_transport_type'
-    },
-    dataType: "json",
-    success: function(response) {
-      //console.log(response);  // Añade esto para ver la respuesta completa
-      if (response.error === '') {
 
-        if (id === 0){
-          transportTypeHtml += '<option value="" disabled selected>Select a transport type</option>';
-        }
-        response.data.forEach(transportType => {
-          //fullName = phone.name + ' ' + phone.last_name;
-          if (transportType.status == 1){
-
-            if (id !== 0 && id === transportType.id){
-              transportTypeHtml += `<option value="${transportType.id}" selected>${transportType.name}</option>`;  
-            }else{
-              transportTypeHtml += `<option value="${transportType.id}">${transportType.name}</option>`;  
-            }
-          }
-          
-        });
-        //console.log(transportTypeHtml);
-        $('#new_order1_tranport_type').html(transportTypeHtml);
-      } else {
-        alert(response.error);
-      }
-    }
-  });
-}
-*/
 // Función para cargar SELECT phones
 function load_select_phones(id = 0) {
-  var phonesHtml = '';
-  var fullName = '';
-  $.ajax({
-    contentType: "application/x-www-form-urlencoded", 
-    type: "POST",
-    url: "../dist/php/services.php",
-    data: {
-      option: 'load_phones'
-    },
-    dataType: "json",
-    success: function(response) {
-      //console.log(response);  // Añade esto para ver la respuesta completa
-      if (response.error === '') {
+    //console.log('Iniciando!');
+    var phonesHtml = '';
+    var fullName = '';
+    $.ajax({
+        contentType: "application/x-www-form-urlencoded", 
+        type: "POST",
+        url: "../dist/php/services.php",
+        data: {
+          option: 'load_phones'
+        },
+        dataType: "json",
+        success: function(response) {
+          //console.log('Recibido!');  // Añade esto para ver la respuesta completa
+          if (response.error === '') {
+            if (id === 0){
+              phonesHtml += '<option value="" disabled selected>Select a phone</option>';
+            }
 
-        if (id === 0){
-          phonesHtml += '<option value="" disabled selected>Select a phone</option>';
+            response.data.forEach(phone => {
+                const selected = (id !== 0 && id === phone.id) ? 'selected' : '';
+                phonesHtml += `<option value="${phone.id}" ${selected}>${phone.phone1} - ${phone.first_name} ${phone.last_name}</option>`;
+            });
+
+            $('#new_order1_phone').html(phonesHtml);
+          } else {
+            alert(response.error);
+          }
         }
-    
-        response.data.forEach(phone => {
-            const selected = (id !== 0 && id === phone.id) ? 'selected' : '';
-            phonesHtml += `<option value="${phone.id}" ${selected}>${phone.phone1} - ${phone.first_name} ${phone.last_name}</option>`;
-        });
-
-        $('#new_order1_phone').html(phonesHtml);
-      } else {
-        alert(response.error);
-      }
-    }
-  });
+    });
 }
 
-// Función para cargar los usuarios en sus campos de users maintenance.
-/*
-function get_user_info(userId) {
-  $.ajax({
-    contentType: "application/x-www-form-urlencoded",
-    type: "POST",
-    url: "../dist/php/services.php",
-    data: {
-      option: 'get_user_info',
-      user_id: userId
-    },
-    dataType: "json",
-    success: function(response) {
-      if (response.error === '') {
-        // Primero, carga todos los roles en el select
-        load_select_roles(response.data.role);
-        $('#user-name-txt').val(response.data.name);
-        $('#user-lastname-txt').val(response.data.last_name);
-        $('#user-email-txt').val(response.data.email);
 
-        // Store the user ID for updating purposes
-        $('#btn-save-users-maintenance').data('user-id', userId);
-      } else {
-        alert(response.error);
-      }
-    }
-  });
-}
-*/
 function get_user_info(userId) {
     $.ajax({
         type: "POST",
